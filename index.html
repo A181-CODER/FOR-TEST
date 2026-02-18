@@ -130,53 +130,61 @@
     </main>
 
     <script>
-        // === دالة التحقق باستخدام SQL API ===
-        async function checkID() {
+               async function checkID() {
             const inputID = document.getElementById('studentIDInput').value;
             const errorMsg = document.getElementById('errorMsg');
             const btn = document.querySelector('.login-box .btn');
 
             if (!inputID) {
-                errorMsg.innerText = "⚠️ الرجاء كتابة الرقم الجامعي";
+                errorMsg.innerText = "⚠️ اكتب الرقم الجامعي";
                 errorMsg.style.display = 'block';
                 return;
             }
 
-            btn.innerText = "جاري الاتصال بقاعدة البيانات...";
+            btn.innerText = "جاري الاتصال بالسيرفر...";
             btn.disabled = true;
+            errorMsg.style.display = 'none';
 
             try {
-                // الاتصال بالسيرفر الحقيقي
+                // الاتصال بالـ API
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: inputID })
                 });
 
+                // لو السيرفر فيه مشكلة (Error 500)
+                if (response.status === 500) {
+                    throw new Error("خطأ في السيرفر (تأكد من Environment Variables)");
+                }
+                
+                // لو السيرفر مش موجود أصلاً (Error 404)
+                if (response.status === 404 && response.statusText === 'Not Found') {
+                     throw new Error("ملف الـ API غير موجود (تأكد من مجلد api)");
+                }
+
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // ✅ نجاح: البيانات جت من الـ SQL
+                    // ✅ نجاح
                     document.getElementById('displayStudentName').innerText = data.name;
                     document.getElementById('displayStudentID').innerText = inputID;
                     document.getElementById('startScreen').style.display = 'none';
                     initSystem(); 
                 } else {
-                    // ❌ فشل: الرقم مش في الداتابيز
-                    errorMsg.innerText = "⚠️ " + (data.error || "الرقم غير مسجل");
+                    // ❌ الرقم غلط
+                    errorMsg.innerText = "⚠️ " + (data.error || "رقم غير صحيح");
                     errorMsg.style.display = 'block';
                 }
             } catch (err) {
                 console.error(err);
-                errorMsg.innerText = "⚠️ خطأ في الاتصال بالسيرفر (تأكد من إعدادات Vercel)";
+                errorMsg.innerText = "⚠️ " + err.message;
                 errorMsg.style.display = 'block';
             } finally {
                 btn.innerText = "تسجيل الدخول";
                 btn.disabled = false;
             }
         }
-
-        // ... (باقي دوال الكاميرا والامتحان زي ما هي بدون تغيير) ...
 
         
         let faceMissingCounter = 0; // عداد لغياب الوجه
