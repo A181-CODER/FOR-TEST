@@ -1,23 +1,19 @@
-// api/login.js
 import { Pool } from 'pg';
 
 const pool = new Pool({
-  connectionString: process.env.POSTGRES_URL, // ده هنجيبه من إعدادات Vercel
-  ssl: {
-    rejectUnauthorized: false
-  }
+  connectionString: process.env.POSTGRES_URL, // لازم تضبط دي في إعدادات فيرسل
+  ssl: { rejectUnauthorized: false }
 });
 
 export default async function handler(req, res) {
-  // CORS Headers عشان تسمح بالاتصال
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST');
+  res.setHeader('Access-Control-Allow-Methods', 'POST');
   
   if (req.method === 'POST') {
     const { id } = req.body;
     try {
       const client = await pool.connect();
-      // البحث عن الطالب بالـ ID
+      // هنا الـ SQL بيشتغل بجد
       const result = await client.query('SELECT name FROM students WHERE id = $1', [id]);
       client.release();
 
@@ -27,7 +23,8 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'الرقم غير مسجل' });
       }
     } catch (error) {
-      return res.status(500).json({ error: 'خطأ في قاعدة البيانات' });
+      console.error(error);
+      return res.status(500).json({ error: 'خطأ في السيرفر' });
     }
   }
 }
