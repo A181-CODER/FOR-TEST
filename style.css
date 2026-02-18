@@ -1,0 +1,178 @@
+/* style.css - تصميم احترافي */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap');
+
+:root {
+    --primary-color: #2c3e50; /* أزرق داكن */
+    --accent-color: #3498db;   /* أزرق فاتح */
+    --success-color: #27ae60;  /* أخضر */
+    --warning-color: #e67e22;  /* برتقالي */
+    --danger-color: #c0392b;   /* أحمر */
+    --bg-color: #ecf0f1;
+    --card-bg: #ffffff;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Tajawal', sans-serif;
+    background-color: var(--bg-color);
+    color: #333;
+    direction: rtl;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* التخطيط العام: شريط جانبي + محتوى */
+.dashboard-container {
+    display: flex;
+    height: 100vh;
+}
+
+/* الشريط الجانبي (معلومات الطالب) */
+.sidebar {
+    width: 280px;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+}
+
+.student-profile {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background-color: #ddd;
+    margin: 0 auto 10px;
+    border: 3px solid var(--accent-color);
+    background-image: url('https://cdn-icons-png.flaticon.com/512/3135/3135715.png'); /* أيقونة طالب */
+    background-size: cover;
+}
+
+.system-status {
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: auto;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 0.9em;
+}
+
+/* منطقة الامتحان الرئيسية */
+.main-content {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+    display: flex;
+    gap: 20px;
+}
+
+.exam-paper {
+    flex: 2;
+    background: var(--card-bg);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.camera-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* تصميم الكاميرا "الذكية" */
+.video-wrapper {
+    position: relative;
+    background: #000;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    border: 2px solid #ddd;
+}
+
+video {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    transform: scaleX(-1); /* عكس الصورة كالمرآة */
+}
+
+.ai-overlay {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.rec-badge {
+    background: red;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: bold;
+    animation: blink 1s infinite;
+    opacity: 0; /* مخفي حتى التشغيل */
+}
+
+.status-badge {
+    background: #555; /* رمادي افتراضياً */
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85em;
+    font-weight: bold;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.status-safe { background-color: var(--success-color); }
+.status-danger { background-color: var(--danger-color); }
+.status-wait { background-color: var(--warning-color); }
+
+/* زر البدء */
+.start-btn {
+    background: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2em;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.3s;
+    width: 100%;
+    font-family: inherit;
+}
+
+.start-btn:hover { background: #2980b9; transform: translateY(-2px); }
+
+/* منطقة السؤال */
+textarea {
+    width: 100%;
+    height: 150px;
+    padding: 15px;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    resize: none;
+    font-family: inherit;
+    font-size: 1em;
+    margin-top: 15px;
+}
+textarea:focus { border-color: var(--accent-color); outline: none; }
+
+@keyframes blink { 50% { opacity: 0; } }
