@@ -80,7 +80,7 @@ This system is designed as a **deterrent**. While it detects visual anomalies, i
 
 ## 👨‍💻 Author
 
-**Eng. Abdallah**
+**Eng. KING ABDO**
 *   *Smart Systems Engineer*
 *   *Cybersecurity Enthusiast*
 
