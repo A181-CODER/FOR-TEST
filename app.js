@@ -1,75 +1,103 @@
+// المتغيرات
 const video = document.getElementById('student-cam');
-const securityBadge = document.getElementById('security-badge');
-const recDot = document.getElementById('rec-dot');
-const startScreen = document.getElementById('start-screen');
-const aiConnText = document.getElementById('ai-conn');
+const canvas = document.createElement('canvas'); // للتصوير الخفي
+const timerDisplay = document.getElementById('exam-timer');
+const aiBadge = document.getElementById('ai-badge');
+const camContainer = document.getElementById('cam-container');
 const logList = document.getElementById('log-list');
-const faceGrid = document.getElementById('face-grid');
 
-// دالة البدء التي يستدعيها الزر
-function startExam() {
-    // طلب صلاحية الكاميرا
-    navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+// إعدادات الوقت (مثلاً 60 دقيقة)
+let timeRemaining = 60 * 60; // بالثواني
+let timerInterval;
+
+function authenticateAndStart() {
+    // 1. نقل البيانات من الـ Login للـ Sidebar
+    document.getElementById('display-name').innerText = document.getElementById('student-name').value;
+    document.getElementById('display-email').innerText = document.getElementById('student-email').value;
+    document.getElementById('display-id').innerText = "ID: " + document.getElementById('student-id').value;
+
+    // 2. طلب الكاميرا
+    navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
-            // 1. تشغيل الفيديو
             video.srcObject = stream;
-            
-            // 2. إخفاء شاشة الترحيب
-            startScreen.style.display = 'none';
-            
-            // 3. تحديث الواجهة لتبدو "قيد التحميل"
-            securityBadge.innerText = "جاري تهيئة الـ AI...";
-            securityBadge.className = "status-badge status-wait";
-            addLog("تم تشغيل الكاميرا بنجاح.");
-            
-            // 4. محاكاة الاتصال بالسيرفر (Delay 2 seconds)
-            setTimeout(() => {
-                activateSystem();
-            }, 2000);
+            document.getElementById('login-screen').style.display = 'none'; // إخفاء الدخول
+            startTimer(); // بدء الوقت
+            startAIAnalysis(); // تشغيل الرقابة
         })
-        .catch(err => {
-            alert("خطأ! لا يمكن الوصول للكاميرا. تأكد من السماح للمتصفح.");
-            console.error(err);
-            securityBadge.innerText = "خطأ في الكاميرا";
-            securityBadge.className = "status-badge status-danger";
-        });
+        .catch(err => alert("لا يمكن بدء الامتحان بدون كاميرا!"));
 }
 
-function activateSystem() {
-    // تفعيل حالة "آمن"
-    securityBadge.innerText = "آمن (تحليل نشط)";
-    securityBadge.className = "status-badge status-safe";
-    
-    // تفعيل أيقونة التسجيل والشبكة
-    recDot.style.opacity = '1';
-    faceGrid.style.display = 'block'; // يظهر المربع حول الوجه
-    
-    // تحديث حالة السيرفر في الشريط الجانبي
-    aiConnText.innerText = "متصل (Python Engine)";
-    aiConnText.style.color = "#2ecc71";
-    
-    addLog("تم الاتصال بمحرك Python للتحليل.");
-    addLog("نظام المراقبة يعمل بكفاءة 100%.");
-
-    // البدء بإرسال الصور (محاكاة)
-    setInterval(simulateAICheck, 5000);
+// دالة التايمر المتحرك
+function startTimer() {
+    updateTimerDisplay();
+    timerInterval = setInterval(() => {
+        timeRemaining--;
+        updateTimerDisplay();
+        if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            alert("انتهى الوقت! سيتم سحب الورقة.");
+            document.getElementById('answer-area').disabled = true;
+        }
+    }, 1000);
 }
 
-function simulateAICheck() {
-    // هذه الدالة ستحاكي رد السيرفر كل 5 ثواني
-    // لتبين للعميد أن النظام "حي" حتى لو البايثون مش شغال دلوقتي
-    const timestamp = new Date().toLocaleTimeString();
-    console.log("Sending frame to AI...");
+function updateTimerDisplay() {
+    let minutes = Math.floor(timeRemaining / 60);
+    let seconds = timeRemaining % 60;
+    timerDisplay.innerText = `${minutes < 10 ? '0'+minutes : minutes}:${seconds < 10 ? '0'+seconds : seconds}`;
     
-    // حركة بسيطة: تغيير زمن الاستجابة عشوائياً ليبدو حقيقياً
-    const latency = Math.floor(Math.random() * 50) + 10;
-    document.getElementById('latency').innerText = latency + "ms";
+    // لو الوقت قرب يخلص يحمر
+    if (timeRemaining < 300) timerDisplay.style.color = "red";
 }
 
-function addLog(message) {
-    const li = document.createElement('li');
-    li.innerText = `✅ ${message}`;
-    li.style.marginBottom = "5px";
-    li.style.borderBottom = "1px solid #eee";
-    logList.prepend(li);
+// دالة الذكاء الاصطناعي
+function startAIAnalysis() {
+    setInterval(() => {
+        captureAndCheck();
+    }, 1000); // إرسال صورة كل ثانية (سريع ودقيق)
+}
+
+function captureAndCheck() {
+    // تحويل الفيديو لصورة
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    const imageBase64 = canvas.toDataURL('image/jpeg');
+
+    // إرسال الصورة للسيرفر (Python)
+    fetch('http://localhost:5000/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageBase64 })
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateUI(data);
+    })
+    .catch(err => console.log("AI Server Offline")); // عشان لو نسيت تشغل البايثون ميعطلش
+}
+
+function updateUI(result) {
+    if (result.status === "SAFE") {
+        aiBadge.innerText = "آمن (مستقر)";
+        aiBadge.className = "status-badge status-safe";
+        camContainer.style.border = "2px solid #ddd"; // حدود طبيعية
+        document.getElementById('security-text').innerText = "آمن";
+        document.getElementById('security-text').style.color = "green";
+    } 
+    else if (result.status === "WARNING") {
+        aiBadge.innerText = "تحذير: " + result.message;
+        aiBadge.className = "status-badge status-wait";
+        camContainer.style.border = "4px solid orange";
+    }
+    else if (result.status === "CHEAT") {
+        aiBadge.innerText = "غش: " + result.message;
+        aiBadge.className = "status-badge status-danger";
+        camContainer.style.border = "5px solid red"; // برواز أحمر عريض
+        
+        // إضافة للسجل
+        let li = document.createElement('li');
+        li.innerText = `⚠️ ${result.message} (${new Date().toLocaleTimeString()})`;
+        logList.prepend(li);
+    }
 }
