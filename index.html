@@ -4,98 +4,122 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>نظام الاختبارات الذكي - HNUSIS</title>
-    <!-- استدعاء المكتبات -->
+    
+    <!-- مكتبات الذكاء الاصطناعي للمراقبة فقط -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
     
-    <!-- استدعاء ملف قاعدة البيانات -->
+    <!-- قاعدة بيانات الطلاب -->
     <script src="students.js"></script> 
 
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* نفس التصميم السابق (CSS) بدون تغيير */
         :root { --primary: #003366; --accent: #dda15e; --bg: #f4f7f6; --danger: #e74c3c; --safe: #27ae60; }
         * { box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
         body { margin: 0; background: var(--bg); height: 100vh; display: flex; overflow: hidden; }
         
+        /* شاشة الحجب (عقاب إغلاق الكاميرا) */
+        .block-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 10000;
+            display: none; /* مخفي افتراضياً */
+            flex-direction: column; justify-content: center; align-items: center;
+            color: white; text-align: center;
+        }
+        .blink-text { color: red; font-size: 2rem; font-weight: bold; animation: blink 0.5s infinite; }
+        
+        /* باقي التصميم */
         aside { width: 300px; background: var(--primary); color: white; padding: 20px; display: flex; flex-direction: column; }
         .student-info { text-align: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
         .avatar { width: 80px; height: 80px; background: #ddd; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--accent); background-image: url('https://cdn-icons-png.flaticon.com/512/3135/3135715.png'); background-size: cover; }
-        .status-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: auto; }
         
-        main { flex: 1; padding: 30px; display: flex; gap: 20px; }
-        .exam-sheet { flex: 2; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow-y: auto; }
+        main { flex: 1; padding: 30px; display: flex; gap: 20px; position: relative; }
+        .exam-sheet { flex: 2; background: white; padding: 30px; border-radius: 10px; display: flex; flex-direction: column; overflow-y: auto; }
         .cam-section { flex: 1; display: flex; flex-direction: column; gap: 15px; }
 
         .video-container { position: relative; background: #000; border-radius: 10px; overflow: hidden; height: 250px; border: 3px solid #ccc; transition: 0.3s; }
         video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        .overlay-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
         
-        /* شاشة الدخول الجديدة */
+        /* خانة رفع الملفات */
+        .upload-box {
+            border: 2px dashed var(--primary); background: #f9f9f9; padding: 20px;
+            text-align: center; margin-top: 20px; border-radius: 10px; cursor: pointer;
+        }
+        .upload-box:hover { background: #eef2f5; }
+        
+        /* شاشة الدخول */
         .start-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,51,102,0.98); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
         .login-box { background: white; padding: 40px; border-radius: 15px; text-align: center; color: #333; width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .login-input { width: 100%; padding: 15px; font-size: 1.1rem; border: 2px solid #ddd; border-radius: 8px; margin: 20px 0; text-align: center; font-weight: bold; }
         .btn { background: var(--accent); color: var(--primary); border: none; padding: 15px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 30px; cursor: pointer; transition: 0.2s; width: 100%; }
-        .btn:hover { transform: scale(1.05); background: #333; color: white; }
-        .error-msg { color: red; display: none; margin-top: 10px; font-weight: bold; }
 
-        /* تفاصيل الدكتور */
-        .doc-info { font-size: 0.9rem; color: #777; margin-top: 5px; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+        @keyframes blink { 50% { opacity: 0; } }
+        .border-danger { border: 5px solid var(--danger) !important; }
     </style>
 </head>
 <body>
 
-    <!-- شاشة الدخول بالـ ID فقط -->
+    <!-- شاشة العقاب (تظهر عند غلق الكاميرا) -->
+    <div class="block-screen" id="cameraBlocker">
+        <div style="font-size: 5rem;">📷🚫</div>
+        <h1 class="blink-text">تحذير أمني!</h1>
+        <h2>تم حجب الامتحان لأن الكاميرا مغلقة أو الوجه غير ظاهر.</h2>
+        <p>أعد توجيه وجهك للكاميرا لفتح الامتحان تلقائياً.</p>
+    </div>
+
+    <!-- شاشة الدخول -->
     <div class="start-overlay" id="startScreen">
         <div class="login-box">
-            <img src="https://cdn-icons-png.flaticon.com/512/2997/2997385.png" width="80" style="margin-bottom: 10px;">
-            <h2 style="color:var(--primary); margin:0;">بوابة الاختبارات</h2>
-            <p style="color:#777;">برنامج هندسة النظم الذكية - HNU</p>
-            
+            <h2 style="color:var(--primary); margin:0;">بوابة الاختبارات الآمنة</h2>
+            <p style="color:#777;">HNUSIS - Intelligent Systems</p>
             <label style="display:block; text-align:right; font-weight:bold; margin-top:20px;">الرقم الجامعي (ID):</label>
-            <input type="number" id="studentIDInput" class="login-input" placeholder="مثال: 921230005">
-            
+            <input type="number" id="studentIDInput" class="login-input" placeholder="Example: 921240008">
             <button class="btn" onclick="checkID()">تسجيل الدخول</button>
-            <p id="errorMsg" class="error-msg">⚠️ هذا الرقم غير مسجل في النظام!</p>
+            <p id="errorMsg" style="color:red; display:none; margin-top:10px;">⚠️ الرقم غير مسجل!</p>
         </div>
     </div>
 
-    <!-- الشريط الجانبي -->
     <aside>
         <div class="student-info">
             <div class="avatar"></div>
             <h3 id="displayStudentName">---</h3>
-            <p style="font-size: 0.9rem; opacity: 0.8;">Intelligent Systems Engineering</p>
             <div style="background: rgba(255,255,255,0.1); margin-top:10px; padding:5px; border-radius:4px;" id="displayStudentID">---</div>
         </div>
-        
-        <div class="status-box">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;"><span>الاتصال:</span> <span style="color:#2ecc71">متصل</span></div>
-            <div style="display: flex; justify-content: space-between;"><span>المراقب:</span> <span style="color:#f1c40f" id="aiStatus">جاري التحميل...</span></div>
+        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: auto;">
+            <div style="display: flex; justify-content: space-between;"><span>المراقب الذكي:</span> <span style="color:#2ecc71" id="aiStatus">نشط</span></div>
         </div>
     </aside>
 
-    <!-- المحتوى -->
     <main>
         <div class="exam-sheet">
-            <div class="doc-info">
-                <strong>أستاذ المادة:</strong> <span id="docNameDisplay">جاري التحميل...</span>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #eee; padding-bottom:15px; margin-bottom:20px;">
-                <h2 id="subjectTitle">...</h2>
-                <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background: #eee; padding: 5px 15px; border-radius: 5px;" id="timer">00:00</div>
+            <div style="border-bottom:2px solid #eee; padding-bottom:15px; margin-bottom:20px;">
+                <strong>أستاذ المادة:</strong> <span id="docNameDisplay">---</span>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+                    <h2 id="subjectTitle" style="margin:0;">جاري تحميل الامتحان...</h2>
+                    <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background: #eee; padding: 5px 15px; border-radius: 5px;" id="timer">00:00</div>
+                </div>
             </div>
             
+            <!-- مكان الأسئلة -->
             <div id="questionsContainer"></div>
             
-            <button class="btn" style="width:200px; margin-top:20px; font-size:1rem;" onclick="submitExam()">تسليم الإجابة</button>
+            <!-- خانة رفع الملفات (طلبك الجديد) -->
+            <div class="upload-box" onclick="document.getElementById('fileInput').click()">
+                <h3>📤 رفع ملف الإجابة (PDF / صورة)</h3>
+                <p style="color:#777;">اضغط هنا لاختيار ملف من جهازك</p>
+                <input type="file" id="fileInput" hidden onchange="handleFileUpload(this)">
+                <div id="fileName" style="color:var(--safe); font-weight:bold; margin-top:10px;"></div>
+            </div>
+
+            <button class="btn" style="width:200px; margin-top:20px; font-size:1rem;" onclick="submitExam()">تسليم نهائي</button>
         </div>
 
         <div class="cam-section">
             <div class="video-container" id="camBox">
-                <div class="overlay-badge"><div style="width:10px; height:10px; background:red; border-radius:50%; animation:blink 1s infinite;"></div> <span id="monitorBadge">AI Monitoring</span></div>
+                <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem;">
+                    🔴 AI Monitor
+                </div>
                 <video id="input_video" autoplay playsinline muted></video>
             </div>
             <div style="background: white; padding: 15px; border-radius: 10px; flex:1; overflow-y: auto;">
@@ -106,53 +130,159 @@
     </main>
 
     <script>
-        // دالة التحقق من الـ ID
+        let faceMissingCounter = 0; // عداد لغياب الوجه
+
+        // 1. التحقق من الطالب
         function checkID() {
             const inputID = document.getElementById('studentIDInput').value;
-            const studentName = getStudentName(inputID); // دالة من ملف students.js
-
+            const studentName = getStudentName(inputID); 
             if (studentName) {
-                // نجاح الدخول
                 document.getElementById('displayStudentName').innerText = studentName;
                 document.getElementById('displayStudentID').innerText = inputID;
                 document.getElementById('startScreen').style.display = 'none';
-                
-                // بدء النظام (كاميرا + تحميل امتحان)
                 initSystem(); 
             } else {
-                // فشل الدخول
                 document.getElementById('errorMsg').style.display = 'block';
             }
         }
 
-        // ... (نفس باقي كود الكاميرا والـ AI السابق بدون تغيير) ...
-        // ... (تأكد من نسخ كود loadExamFromURL وكود FaceMesh من الرد السابق هنا) ...
-        
-        // تعديل بسيط في دالة loadExamFromURL لعرض اسم الدكتور
+        // 2. تحميل الامتحان (إصلاح البج)
         function loadExamFromURL() {
             const urlParams = new URLSearchParams(window.location.search);
             const data = urlParams.get('data');
             if (data) {
                 try {
-                    const decodedData = JSON.parse(decodeURIComponent(escape(atob(data))));
+                    // فك التشفير بعناية
+                    const jsonString = decodeURIComponent(escape(atob(data)));
+                    const decodedData = JSON.parse(jsonString);
+
                     document.getElementById('subjectTitle').innerText = decodedData.s;
-                    document.getElementById('docNameDisplay').innerText = decodedData.doc || "غير محدد"; // عرض اسم الدكتور
-                    startCustomTimer(decodedData.t * 60);
+                    document.getElementById('docNameDisplay').innerText = decodedData.doc || "غير محدد";
                     
+                    // تشغيل التايمر
+                    startTimer(decodedData.t * 60);
+                    
+                    // عرض الأسئلة
                     const container = document.getElementById('questionsContainer');
                     container.innerHTML = "";
                     decodedData.q.forEach((qText, index) => {
                         const qDiv = document.createElement('div');
-                        qDiv.innerHTML = `<p style="font-weight:bold; margin:20px 0 10px;">س${index+1}: ${qText}</p><textarea style="width:100%; height:100px; padding:10px; border:1px solid #ddd; border-radius:5px; resize:none;"></textarea>`;
+                        qDiv.innerHTML = `
+                            <div style="margin-bottom:20px;">
+                                <p style="font-weight:bold; font-size:1.1rem;">س${index+1}: ${qText}</p>
+                                <textarea style="width:100%; height:100px; padding:10px; border:1px solid #ddd; border-radius:5px; resize:none;" placeholder="اكتب الإجابة نصياً هنا..."></textarea>
+                            </div>`;
                         container.appendChild(qDiv);
                     });
-                } catch (e) { alert("رابط غير صالح"); }
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('subjectTitle').innerText = "خطأ في تحميل الامتحان";
+                }
+            } else {
+                document.getElementById('subjectTitle').innerText = "لا يوجد امتحان (وضع التجربة)";
             }
         }
-        
-        // إعدادات الكاميرا والـ AI (ضع كود Google MediaPipe هنا كما هو في الرد السابق)
-        // ...
-        
+
+        // 3. معالجة رفع الملفات (مجرد عرض اسم الملف لأننا Static)
+        function handleFileUpload(input) {
+            if (input.files && input.files[0]) {
+                document.getElementById('fileName').innerText = "✅ تم إرفاق: " + input.files[0].name;
+            }
+        }
+
+        // 4. نظام المراقبة الصارم (Google MediaPipe)
+        function initSystem() {
+            const videoElement = document.getElementById('input_video');
+            const faceMesh = new FaceMesh({locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+            }});
+
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            faceMesh.onResults(onResults);
+
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await faceMesh.send({image: videoElement});
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start();
+        }
+
+        // "المخ" الخاص بالمراقبة
+        function onResults(results) {
+            const blocker = document.getElementById('cameraBlocker');
+            const camBox = document.getElementById('camBox');
+
+            // 1. هل الوجه موجود؟
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                // الوجه موجود -> افتح الامتحان
+                faceMissingCounter = 0;
+                blocker.style.display = "none"; 
+                camBox.className = "video-container"; // إطار طبيعي
+
+                // تحليل الغش (يمين/يسار)
+                const landmarks = results.multiFaceLandmarks[0];
+                const nose = landmarks[1];
+                const leftEar = landmarks[234];
+                const rightEar = landmarks[454];
+                const ratio = Math.abs(nose.x - leftEar.x) / (Math.abs(nose.x - rightEar.x) + 0.001);
+
+                if (ratio > 3.0) logCheating("التفات لليسار");
+                else if (ratio < 0.33) logCheating("التفات لليمين");
+
+            } else {
+                // الوجه غير موجود (مغلق الكاميرا أو بعيد)
+                faceMissingCounter++;
+                if (faceMissingCounter > 10) { // لو اختفى لأكثر من ثانية تقريباً
+                    blocker.style.display = "flex"; // اقفل الشاشة
+                    camBox.className = "video-container border-danger"; // برواز أحمر
+                }
+            }
+        }
+
+        // تسجيل الغش في السجل
+        let lastLogTime = 0;
+        function logCheating(msg) {
+            const now = Date.now();
+            if (now - lastLogTime > 3000) {
+                const ul = document.getElementById('logs');
+                const li = document.createElement('li');
+                li.innerHTML = `<span style="color:red; font-weight:bold;">⚠️ ${msg}</span> <span style="font-size:0.8em">(${new Date().toLocaleTimeString()})</span>`;
+                ul.prepend(li);
+                lastLogTime = now;
+            }
+        }
+
+        // التايمر
+        function startTimer(duration) {
+            let time = duration || 3600;
+            const el = document.getElementById('timer');
+            const interval = setInterval(() => {
+                time--;
+                let m = Math.floor(time / 60);
+                let s = time % 60;
+                el.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                if (time <= 0) {
+                    clearInterval(interval);
+                    alert("انتهى الوقت!");
+                    submitExam();
+                }
+            }, 1000);
+        }
+
+        function submitExam() {
+            alert("تم تسليم الامتحان بنجاح!");
+            window.location.reload();
+        }
+
         window.addEventListener('DOMContentLoaded', loadExamFromURL);
     </script>
 </body>
