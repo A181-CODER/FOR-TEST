@@ -2,17 +2,41 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام مراقبة الامتحانات الذكي | UniGuard AI</title>
+    <title>نظام الامتحانات - جامعة القاهرة الذكية</title> <!-- غير اسم الجامعة هنا -->
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* ستايل إضافي لشاشة الدخول */
+        .login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
+            z-index: 10000; display: flex; justify-content: center; align-items: center;
+        }
+        .login-box {
+            background: white; padding: 40px; border-radius: 10px; text-align: center; width: 400px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .login-box input {
+            width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;
+            font-family: 'Tajawal', sans-serif;
+        }
+        .timer-box { font-size: 1.5em; font-weight: bold; color: #c0392b; background: #fff; padding: 5px 15px; border-radius: 5px; border: 1px solid #ddd;}
+    </style>
 </head>
 <body>
 
-    <!-- شاشة الترحيب (Overlay) لمنع الدخول المباشر -->
-    <div id="start-screen" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(44, 62, 80, 0.95); z-index:9999; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white;">
-        <h1 style="margin-bottom:20px;">نظام UniGuard الأمني</h1>
-        <p style="margin-bottom:30px; opacity:0.8;">يجب السماح للكاميرا والذكاء الاصطناعي بالعمل لبدء الاختبار</p>
-        <button class="start-btn" style="width:auto; padding:15px 50px;" onclick="startExam()">بدء التحقق الأمني والاختبار</button>
+    <!-- شاشة تسجيل الدخول (الهوية الجامعية) -->
+    <div id="login-screen" class="login-overlay">
+        <div class="login-box">
+            <img src="https://cdn-icons-png.flaticon.com/512/2231/2231649.png" width="80" style="margin-bottom:20px;">
+            <h2 style="margin-bottom:10px; color:#2c3e50;">بوابة الامتحانات الذكية</h2>
+            <p style="color:#777; margin-bottom:20px;">جامعة القاهرة - كلية الحاسبات والذكاء الاصطناعي</p>
+            
+            <input type="text" id="student-name" placeholder="اسم الطالب الرباعي" value="عبدالله محمد أحمد">
+            <input type="text" id="student-id" placeholder="الرقم الجامعي (ID)" value="20240088">
+            <input type="email" id="student-email" placeholder="البريد الجامعي" value="abdallah@fci.cu.edu.eg">
+            
+            <button class="start-btn" onclick="authenticateAndStart()">تسجيل الدخول وبدء الاختبار</button>
+        </div>
     </div>
 
     <div class="dashboard-container">
@@ -20,62 +44,48 @@
         <aside class="sidebar">
             <div class="student-profile">
                 <div class="avatar"></div>
-                <h3>عبدالله محمد</h3>
-                <p style="font-size:0.9em; opacity:0.7;">كلية الذكاء الاصطناعي</p>
-                <p style="font-size:0.8em; margin-top:5px; color:#f1c40f;">ID: 20240088</p>
+                <h3 id="display-name">---</h3>
+                <p id="display-email" style="font-size:0.75em; opacity:0.8; margin-top:5px;">---</p>
+                <p id="display-id" style="font-size:0.9em; margin-top:5px; color:#f1c40f; font-weight:bold;">ID: ---</p>
             </div>
             
             <div class="system-status">
                 <h4>حالة النظام</h4>
-                <div class="status-item">
-                    <span>الذكاء الاصطناعي:</span>
-                    <span id="ai-conn" style="color:#e74c3c;">غير متصل</span>
-                </div>
-                <div class="status-item">
-                    <span>التشفير:</span>
-                    <span style="color:#2ecc71;">نشط (Rust)</span>
-                </div>
-                <div class="status-item">
-                    <span>زمن الاستجابة:</span>
-                    <span id="latency">0ms</span>
-                </div>
+                <div class="status-item"><span>الحالة الأمنية:</span> <span id="security-text" style="color:red;">جاري التحقق</span></div>
+                <div class="status-item"><span>AI Engine:</span> <span style="color:#2ecc71;">Active (v2.1)</span></div>
             </div>
         </aside>
 
-        <!-- المحتوى الرئيسي -->
         <main class="main-content">
-            <!-- ورقة الامتحان -->
             <section class="exam-paper">
-                <header style="border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px;">
-                    <h2 style="color:var(--primary-color);">امتحان: أمن المعلومات المتقدم</h2>
-                    <p style="color:#777;">الزمن المتبقي: <span style="font-weight:bold; color:var(--danger-color);">59:30</span></p>
+                <header style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #eee; padding-bottom: 15px;">
+                    <div>
+                        <h2 style="color:var(--primary-color);">امتحان: هندسة النظم الذكية</h2>
+                        <p style="font-size:0.9em; color:#555;">الفرقة الرابعة - 2024</p>
+                    </div>
+                    <div class="timer-box" id="exam-timer">00:00</div>
                 </header>
 
                 <div class="question-box">
-                    <h3>س1: اشرح آلية عمل هجوم Man-in-the-Middle وكيفية الوقاية منه؟</h3>
-                    <textarea placeholder="اكتب إجابتك هنا..."></textarea>
+                    <h3 style="margin-top:20px;">س1: كيف يمكن استخدام الـ Computer Vision في تأمين المنشآت الحيوية؟</h3>
+                    <textarea id="answer-area" placeholder="اكتب إجابتك هنا..."></textarea>
                 </div>
-                <br>
-                <button class="start-btn" style="font-size:1em;">حفظ وإرسال الإجابة</button>
+                <button class="start-btn" style="margin-top:20px;">تسليم الامتحان</button>
             </section>
 
-            <!-- لوحة المراقبة الذكية -->
             <aside class="camera-panel">
-                <div class="video-wrapper">
+                <div class="video-wrapper" id="cam-container">
                     <div class="ai-overlay">
-                        <span id="rec-dot" class="rec-badge">REC ●</span>
-                        <span id="security-badge" class="status-badge status-wait">في انتظار الكاميرا...</span>
+                        <span class="rec-badge" style="opacity:1;">LIVE AI ●</span>
+                        <span id="ai-badge" class="status-badge status-wait">انتظار...</span>
                     </div>
                     <video id="student-cam" autoplay playsinline muted></video>
-                    <!-- شبكة وهمية للذكاء الاصطناعي -->
-                    <div id="face-grid" style="position:absolute; top:20%; left:25%; width:50%; height:60%; border:2px dashed rgba(52, 152, 219, 0.5); border-radius:50%; display:none;"></div>
+                    <!-- قماش (Canvas) سنرسم عليه الصندوق الأحمر لو غش -->
+                    <canvas id="overlay-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
                 </div>
-
-                <div style="background:white; padding:15px; border-radius:8px; box-shadow:0 2px 10px rgba(0,0,0,0.05);">
-                    <h4 style="margin-bottom:10px;">سجل المراقب الآلي:</h4>
-                    <ul id="log-list" style="font-size:0.85em; list-style:none; color:#555; height:150px; overflow-y:auto;">
-                        <li>🕒 بانتظار بدء الجلسة...</li>
-                    </ul>
+                <div style="background:white; padding:15px; border-radius:8px;">
+                    <h4>سجل المخالفات:</h4>
+                    <ul id="log-list" style="color:red; font-size:0.8em; height:100px; overflow-y:auto;"></ul>
                 </div>
             </aside>
         </main>
