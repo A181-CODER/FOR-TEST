@@ -130,6 +130,55 @@
     </main>
 
     <script>
+        // === دالة التحقق باستخدام SQL API ===
+        async function checkID() {
+            const inputID = document.getElementById('studentIDInput').value;
+            const errorMsg = document.getElementById('errorMsg');
+            const btn = document.querySelector('.login-box .btn');
+
+            if (!inputID) {
+                errorMsg.innerText = "⚠️ الرجاء كتابة الرقم الجامعي";
+                errorMsg.style.display = 'block';
+                return;
+            }
+
+            btn.innerText = "جاري الاتصال بقاعدة البيانات...";
+            btn.disabled = true;
+
+            try {
+                // الاتصال بالسيرفر الحقيقي
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: inputID })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    // ✅ نجاح: البيانات جت من الـ SQL
+                    document.getElementById('displayStudentName').innerText = data.name;
+                    document.getElementById('displayStudentID').innerText = inputID;
+                    document.getElementById('startScreen').style.display = 'none';
+                    initSystem(); 
+                } else {
+                    // ❌ فشل: الرقم مش في الداتابيز
+                    errorMsg.innerText = "⚠️ " + (data.error || "الرقم غير مسجل");
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                console.error(err);
+                errorMsg.innerText = "⚠️ خطأ في الاتصال بالسيرفر (تأكد من إعدادات Vercel)";
+                errorMsg.style.display = 'block';
+            } finally {
+                btn.innerText = "تسجيل الدخول";
+                btn.disabled = false;
+            }
+        }
+
+        // ... (باقي دوال الكاميرا والامتحان زي ما هي بدون تغيير) ...
+
+        
         let faceMissingCounter = 0; // عداد لغياب الوجه
 
         // 1. التحقق من الطالب
