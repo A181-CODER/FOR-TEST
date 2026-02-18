@@ -341,6 +341,23 @@
         }
 
         window.addEventListener('DOMContentLoaded', loadExamFromURL);
+
+// ==========================================
+// كود إلغاء البوابة (Bypass Login)
+// ==========================================
+window.addEventListener('DOMContentLoaded', () => {
+    // 1. إخفاء شاشة الدخول
+    document.getElementById('startScreen').style.display = 'none';
+
+    // 2. وضع بيانات وهمية عشان الشكل
+    document.getElementById('displayStudentName').innerText = "وضع التجربة (Admin)";
+    document.getElementById('displayStudentID').innerText = "000000000";
+
+    // 3. تشغيل النظام فوراً
+    initSystem(); 
+});
+// ==========================================
+        
     </script>
 </body>
 </html>
