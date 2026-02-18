@@ -2,95 +2,223 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>نظام الامتحانات - جامعة القاهرة الذكية</title> <!-- غير اسم الجامعة هنا -->
-    <link rel="stylesheet" href="style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام الاختبارات الذكي - جامعة المستقبل</title>
+    <!-- استدعاء مكتبات جوجل للذكاء الاصطناعي (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    
+    <!-- الخطوط والتصميم -->
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* ستايل إضافي لشاشة الدخول */
-        .login-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(135deg, #2c3e50 0%, #000000 100%);
-            z-index: 10000; display: flex; justify-content: center; align-items: center;
-        }
-        .login-box {
-            background: white; padding: 40px; border-radius: 10px; text-align: center; width: 400px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .login-box input {
-            width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px;
-            font-family: 'Tajawal', sans-serif;
-        }
-        .timer-box { font-size: 1.5em; font-weight: bold; color: #c0392b; background: #fff; padding: 5px 15px; border-radius: 5px; border: 1px solid #ddd;}
+        :root { --primary: #003366; --accent: #dda15e; --bg: #f4f7f6; --danger: #e74c3c; --safe: #27ae60; }
+        * { box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
+        body { margin: 0; background: var(--bg); height: 100vh; display: flex; overflow: hidden; }
+        
+        /* الشريط الجانبي */
+        aside { width: 300px; background: var(--primary); color: white; padding: 20px; display: flex; flex-direction: column; }
+        .student-info { text-align: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
+        .avatar { width: 80px; height: 80px; background: #ddd; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--accent); background-image: url('https://cdn-icons-png.flaticon.com/512/3135/3135715.png'); background-size: cover; }
+        .status-box { background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: auto; }
+        .status-row { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9rem; }
+
+        /* المحتوى الرئيسي */
+        main { flex: 1; padding: 30px; display: flex; gap: 20px; }
+        .exam-sheet { flex: 2; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .cam-section { flex: 1; display: flex; flex-direction: column; gap: 15px; }
+
+        /* الكاميرا والذكاء الاصطناعي */
+        .video-container { position: relative; background: #000; border-radius: 10px; overflow: hidden; height: 250px; border: 3px solid #ccc; transition: 0.3s; }
+        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        .overlay-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
+        .dot { width: 10px; height: 10px; background: red; border-radius: 50%; animation: blink 1s infinite; }
+        
+        /* التايمر */
+        .timer { font-size: 1.5rem; font-weight: bold; color: var(--primary); background: #eee; padding: 5px 15px; border-radius: 5px; }
+
+        /* شاشة البدء */
+        .start-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,51,102,0.95); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        .btn { background: var(--accent); color: var(--primary); border: none; padding: 15px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 30px; cursor: pointer; margin-top: 20px; transition: 0.2s; }
+        .btn:hover { transform: scale(1.05); background: white; }
+
+        @keyframes blink { 50% { opacity: 0; } }
+        .border-danger { border-color: var(--danger) !important; box-shadow: 0 0 15px var(--danger); }
+        .border-safe { border-color: var(--safe) !important; }
+        .text-danger { color: var(--danger); font-weight: bold; }
+        .text-safe { color: var(--safe); font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <!-- شاشة تسجيل الدخول (الهوية الجامعية) -->
-    <div id="login-screen" class="login-overlay">
-        <div class="login-box">
-            <img src="https://cdn-icons-png.flaticon.com/512/2231/2231649.png" width="80" style="margin-bottom:20px;">
-            <h2 style="margin-bottom:10px; color:#2c3e50;">بوابة الامتحانات الذكية</h2>
-            <p style="color:#777; margin-bottom:20px;">جامعة القاهرة - كلية الحاسبات والذكاء الاصطناعي</p>
-            
-            <input type="text" id="student-name" placeholder="اسم الطالب الرباعي" value="عبدالله محمد أحمد">
-            <input type="text" id="student-id" placeholder="الرقم الجامعي (ID)" value="20240088">
-            <input type="email" id="student-email" placeholder="البريد الجامعي" value="abdallah@fci.cu.edu.eg">
-            
-            <button class="start-btn" onclick="authenticateAndStart()">تسجيل الدخول وبدء الاختبار</button>
+    <!-- شاشة الترحيب -->
+    <div class="start-overlay" id="startScreen">
+        <img src="https://cdn-icons-png.flaticon.com/512/2997/2997385.png" width="100" style="margin-bottom: 20px;">
+        <h1>نظام المراقبة الذكي - University AI Proctor</h1>
+        <p>سيتم تفعيل الكاميرا وتحليل السلوك باستخدام الذكاء الاصطناعي</p>
+        <button class="btn" onclick="initSystem()">بدء الاختبار والتحقق من الهوية</button>
+    </div>
+
+    <!-- الشريط الجانبي -->
+    <aside>
+        <div class="student-info">
+            <div class="avatar"></div>
+            <h3>عبدالله محمد</h3>
+            <p style="font-size: 0.9rem; opacity: 0.8;">كلية الذكاء الاصطناعي</p>
+            <div style="background: rgba(255,255,255,0.1); margin-top:10px; padding:5px; border-radius:4px;">ID: 2024-AI-088</div>
         </div>
-    </div>
+        
+        <div class="status-box">
+            <div class="status-row"><span>حالة الاتصال:</span> <span style="color:#2ecc71">متصل</span></div>
+            <div class="status-row"><span>محرك الـ AI:</span> <span style="color:#f1c40f" id="aiStatus">جاري التحميل...</span></div>
+            <div class="status-row"><span>مستوى الثقة:</span> <span id="confidenceScore">0%</span></div>
+        </div>
+    </aside>
 
-    <div class="dashboard-container">
-        <!-- الشريط الجانبي -->
-        <aside class="sidebar">
-            <div class="student-profile">
-                <div class="avatar"></div>
-                <h3 id="display-name">---</h3>
-                <p id="display-email" style="font-size:0.75em; opacity:0.8; margin-top:5px;">---</p>
-                <p id="display-id" style="font-size:0.9em; margin-top:5px; color:#f1c40f; font-weight:bold;">ID: ---</p>
+    <!-- المحتوى -->
+    <main>
+        <div class="exam-sheet">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:2px solid #eee; padding-bottom:15px; margin-bottom:20px;">
+                <h2>مادة: أمن المعلومات (Cyber Security)</h2>
+                <div class="timer" id="timer">60:00</div>
             </div>
             
-            <div class="system-status">
-                <h4>حالة النظام</h4>
-                <div class="status-item"><span>الحالة الأمنية:</span> <span id="security-text" style="color:red;">جاري التحقق</span></div>
-                <div class="status-item"><span>AI Engine:</span> <span style="color:#2ecc71;">Active (v2.1)</span></div>
+            <p style="font-weight:bold; margin-bottom:10px;">س1: اشرح مفهوم Zero Trust Security؟</p>
+            <textarea style="width:100%; height:150px; padding:15px; border:2px solid #eee; border-radius:8px; resize:none;" placeholder="اكتب الإجابة هنا..."></textarea>
+            
+            <button class="btn" style="width:200px; padding:10px; font-size:1rem; margin-top:20px;">تسليم الإجابة</button>
+        </div>
+
+        <div class="cam-section">
+            <div class="video-container" id="camBox">
+                <div class="overlay-badge"><div class="dot"></div> <span id="monitorBadge">AI Monitoring</span></div>
+                <video id="input_video" autoplay playsinline muted></video>
+                <!-- كانفاس مخفي للمعالجة -->
+                <canvas id="output_canvas" style="display:none;"></canvas>
             </div>
-        </aside>
 
-        <main class="main-content">
-            <section class="exam-paper">
-                <header style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #eee; padding-bottom: 15px;">
-                    <div>
-                        <h2 style="color:var(--primary-color);">امتحان: هندسة النظم الذكية</h2>
-                        <p style="font-size:0.9em; color:#555;">الفرقة الرابعة - 2024</p>
-                    </div>
-                    <div class="timer-box" id="exam-timer">00:00</div>
-                </header>
+            <div style="background: white; padding: 15px; border-radius: 10px; flex:1; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow-y: auto;">
+                <h4 style="margin:0 0 10px 0; color:var(--primary);">سجل المراقبة:</h4>
+                <ul id="logs" style="list-style: none; padding: 0; font-size: 0.85rem; color: #555;">
+                    <li>⏳ بانتظار بدء الجلسة...</li>
+                </ul>
+            </div>
+        </div>
+    </main>
 
-                <div class="question-box">
-                    <h3 style="margin-top:20px;">س1: كيف يمكن استخدام الـ Computer Vision في تأمين المنشآت الحيوية؟</h3>
-                    <textarea id="answer-area" placeholder="اكتب إجابتك هنا..."></textarea>
-                </div>
-                <button class="start-btn" style="margin-top:20px;">تسليم الامتحان</button>
-            </section>
+    <script>
+        // إعدادات المتغيرات
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const startScreen = document.getElementById('startScreen');
+        const camBox = document.getElementById('camBox');
+        const monitorBadge = document.getElementById('monitorBadge');
+        const aiStatus = document.getElementById('aiStatus');
+        const logs = document.getElementById('logs');
+        let timerInterval;
 
-            <aside class="camera-panel">
-                <div class="video-wrapper" id="cam-container">
-                    <div class="ai-overlay">
-                        <span class="rec-badge" style="opacity:1;">LIVE AI ●</span>
-                        <span id="ai-badge" class="status-badge status-wait">انتظار...</span>
-                    </div>
-                    <video id="student-cam" autoplay playsinline muted></video>
-                    <!-- قماش (Canvas) سنرسم عليه الصندوق الأحمر لو غش -->
-                    <canvas id="overlay-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
-                </div>
-                <div style="background:white; padding:15px; border-radius:8px;">
-                    <h4>سجل المخالفات:</h4>
-                    <ul id="log-list" style="color:red; font-size:0.8em; height:100px; overflow-y:auto;"></ul>
-                </div>
-            </aside>
-        </main>
-    </div>
+        // دالة بدء النظام
+        function initSystem() {
+            startScreen.style.display = 'none';
+            startTimer();
+            startCamera();
+        }
 
-    <script src="app.js"></script>
+        // تشغيل الكاميرا
+        function startCamera() {
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await faceMesh.send({image: videoElement});
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start();
+        }
+
+        // إعدادات Google MediaPipe FaceMesh
+        const faceMesh = new FaceMesh({locateFile: (file) => {
+            return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+        }});
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            refineLandmarks: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults(onResults);
+
+        // دالة تحليل النتائج (المخ)
+        function onResults(results) {
+            aiStatus.innerText = "يعمل بنشاط";
+            aiStatus.style.color = "#2ecc71";
+            document.getElementById('confidenceScore').innerText = "99%";
+
+            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                const landmarks = results.multiFaceLandmarks[0];
+
+                // حساب التفاف الرأس (Yaw)
+                // الأنف (رقم 1)، الأذن اليسرى (234)، الأذن اليمنى (454)
+                const nose = landmarks[1];
+                const leftEar = landmarks[234];
+                const rightEar = landmarks[454];
+
+                // المسافة بين الأنف والاذنين
+                const distToLeft = Math.abs(nose.x - leftEar.x);
+                const distToRight = Math.abs(nose.x - rightEar.x);
+                
+                // النسبة لتحديد الاتجاه
+                const ratio = distToLeft / (distToRight + 0.001);
+
+                if (ratio > 3.0) {
+                    updateStatus("CHEAT", "التفات حاد لليسار!");
+                } else if (ratio < 0.33) {
+                    updateStatus("CHEAT", "التفات حاد لليمين!");
+                } else {
+                    updateStatus("SAFE", "طبيعي");
+                }
+            } else {
+                updateStatus("WARNING", "الوجه غير ظاهر!");
+            }
+        }
+
+        // تحديث الواجهة بناء على الحالة
+        let lastLogTime = 0;
+        function updateStatus(status, msg) {
+            if (status === "SAFE") {
+                camBox.className = "video-container border-safe";
+                monitorBadge.style.background = "rgba(39, 174, 96, 0.8)";
+                monitorBadge.innerHTML = "✅ آمن";
+            } else {
+                camBox.className = "video-container border-danger";
+                monitorBadge.style.background = "rgba(231, 76, 60, 0.9)";
+                monitorBadge.innerHTML = "⚠️ " + msg;
+
+                // تسجيل في السجل كل 3 ثواني
+                const now = Date.now();
+                if (now - lastLogTime > 3000) {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="text-danger">⚠️ ${msg}</span> <span style="font-size:0.8em; color:#999">(${new Date().toLocaleTimeString()})</span>`;
+                    logs.prepend(li);
+                    lastLogTime = now;
+                }
+            }
+        }
+
+        // التايمر
+        function startTimer() {
+            let time = 3600;
+            const el = document.getElementById('timer');
+            timerInterval = setInterval(() => {
+                time--;
+                let m = Math.floor(time / 60);
+                let s = time % 60;
+                el.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+                if (time <= 0) clearInterval(timerInterval);
+            }, 1000);
+        }
+    </script>
 </body>
 </html>
