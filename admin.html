@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم أعضاء هيئة التدريس - إنشاء اختبار</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Tajawal', sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, textarea, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .question-card { background: #f9f9f9; padding: 15px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 5px; position: relative; }
+        .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; color: white; }
+        .btn-add { background: #3498db; }
+        .btn-generate { background: #27ae60; width: 100%; font-size: 1.2rem; margin-top: 20px; }
+        .delete-btn { position: absolute; left: 10px; top: 10px; color: red; cursor: pointer; }
+        
+        #linkArea { display: none; margin-top: 20px; background: #e8f6f3; padding: 20px; border: 1px dashed #27ae60; text-align: center; }
+        #examLink { word-break: break-all; color: #2980b9; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🎓 إعداد اختبار جديد</h1>
+        
+        <div class="form-group">
+            <label>اسم المادة:</label>
+            <input type="text" id="subjectName" placeholder="مثال: ذكاء اصطناعي">
+        </div>
+
+        <div class="form-group">
+            <label>زمن الاختبار (دقائق):</label>
+            <input type="number" id="examTime" value="60">
+        </div>
+
+        <hr>
+        <h3>الأسئلة:</h3>
+        <div id="questionsList"></div>
+        
+        <button class="btn btn-add" onclick="addQuestion()">+ أضف سؤال جديد</button>
+        <button class="btn btn-generate" onclick="generateExamLink()">إنشاء رابط الامتحان 🔗</button>
+
+        <div id="linkArea">
+            <p>✅ تم إنشاء الامتحان بنجاح! انسخ هذا الرابط وأرسله للطلاب:</p>
+            <p id="examLink">...</p>
+            <button class="btn" style="background:#555; margin-top:10px;" onclick="copyLink()">نسخ الرابط</button>
+        </div>
+    </div>
+
+    <script>
+        let questions = [];
+
+        function addQuestion() {
+            const div = document.createElement('div');
+            div.className = 'question-card';
+            div.innerHTML = `
+                <label>نص السؤال:</label>
+                <input type="text" class="q-text" placeholder="اكتب السؤال هنا...">
+                <span class="delete-btn" onclick="this.parentElement.remove()">حذف 🗑️</span>
+            `;
+            document.getElementById('questionsList').appendChild(div);
+        }
+
+        function generateExamLink() {
+            // 1. تجميع البيانات
+            const subject = document.getElementById('subjectName').value;
+            const time = document.getElementById('examTime').value;
+            const qInputs = document.querySelectorAll('.q-text');
+            
+            if(!subject || qInputs.length === 0) {
+                alert("الرجاء ملء اسم المادة وسؤال واحد على الأقل");
+                return;
+            }
+
+            let qArray = [];
+            qInputs.forEach(input => qArray.push(input.value));
+
+            // 2. تكوين كائن الامتحان
+            const examData = {
+                s: subject,
+                t: time,
+                q: qArray
+            };
+
+            // 3. التشفير (تحويل لـ Base64 عشان يتحط في اللينك)
+            // JSON -> String -> Base64
+            const encodedData = btoa(unescape(encodeURIComponent(JSON.stringify(examData))));
+            
+            // 4. إنشاء الرابط (بيشاور على index.html)
+            const currentUrl = window.location.href.replace('admin.html', 'index.html');
+            const finalLink = `${currentUrl}?data=${encodedData}`;
+
+            document.getElementById('examLink').innerText = finalLink;
+            document.getElementById('linkArea').style.display = 'block';
+        }
+
+        function copyLink() {
+            navigator.clipboard.writeText(document.getElementById('examLink').innerText);
+            alert("تم نسخ الرابط!");
+        }
+
+        // إضافة سؤال افتراضي عند البدء
+        addQuestion();
+    </script>
+</body>
+</html>
