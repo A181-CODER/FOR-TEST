@@ -1,3 +1,65 @@
+// ضيف الدالة دي واستدعيها في initSystem() أو window.onload
+function loadExamFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const data = urlParams.get('data');
+
+    if (data) {
+        try {
+            // فك التشفير: Base64 -> JSON
+            const decodedData = JSON.parse(decodeURIComponent(escape(atob(data))));
+            
+            // 1. وضع اسم المادة
+            document.getElementById('subjectTitle').innerText = "مادة: " + decodedData.s;
+            
+            // 2. ضبط الوقت
+            let timeInSeconds = decodedData.t * 60;
+            startCustomTimer(timeInSeconds);
+
+            // 3. عرض الأسئلة
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = ""; // مسح أي حاجة قديمة
+            
+            decodedData.q.forEach((qText, index) => {
+                const qDiv = document.createElement('div');
+                qDiv.style.marginBottom = "20px";
+                qDiv.innerHTML = `
+                    <p style="font-weight:bold; margin-bottom:10px;">س${index + 1}: ${qText}</p>
+                    <textarea style="width:100%; height:100px; padding:10px; border:2px solid #eee; border-radius:8px; resize:none;" placeholder="اكتب الإجابة هنا..."></textarea>
+                `;
+                container.appendChild(qDiv);
+            });
+
+        } catch (e) {
+            console.error(e);
+            alert("رابط الامتحان غير صالح!");
+        }
+    } else {
+        // لو مفيش داتا في اللينك (امتحان افتراضي)
+        document.getElementById('subjectTitle').innerText = "اختبار تجريبي (Default)";
+    }
+}
+
+// دالة تايمر معدلة لتقبل وقت متغير
+function startCustomTimer(duration) {
+    let time = duration;
+    const el = document.getElementById('timer');
+    // إلغاء أي تايمر سابق لو موجود
+    if(window.examInterval) clearInterval(window.examInterval);
+    
+    window.examInterval = setInterval(() => {
+        time--;
+        let m = Math.floor(time / 60);
+        let s = time % 60;
+        el.innerText = `${m}:${s < 10 ? '0'+s : s}`;
+        if (time <= 0) {
+            clearInterval(window.examInterval);
+            alert("انتهى الوقت!");
+        }
+    }, 1000);
+}
+
+// استدعي الدالة دي لما الصفحة تفتح
+window.addEventListener('DOMContentLoaded', loadExamFromURL);
 // المتغيرات
 const video = document.getElementById('student-cam');
 const canvas = document.createElement('canvas'); // للتصوير الخفي
