@@ -19,6 +19,7 @@
   const state = {
     exam: { subject: "اختبار تجريبي", instructor: "غير محدد", durationSeconds: CONFIG.defaultDurationSeconds, questions: [] },
     student: null,
+    authToken: null,
     sessionId: null,
     stream: null,
     faceMesh: null,
@@ -107,14 +108,20 @@
     };
   }
 
-  function loadExamFromURL() {
-    const encoded = new URLSearchParams(window.location.search).get("data");
-    if (!encoded) {
-      renderExam();
-      return;
-    }
+  async function loadExamFromURL() {
+    const params = new URLSearchParams(window.location.search);
+    const examToken = params.get("exam");
+    const encoded = params.get("data");
     try {
-      state.exam = validateExam(decodeExamData(encoded));
+      if (examToken) {
+        const response = await fetch(`/api/exams?token=${encodeURIComponent(examToken)}`, { cache: "no-store" });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error || "رابط الامتحان غير صالح");
+        state.exam = validateExam(payload);
+      } else if (encoded) {
+        // Legacy local mode: Base64 is encoding, not encryption. Do not use it for live university exams.
+        state.exam = validateExam(decodeExamData(encoded));
+      }
       renderExam();
     } catch (error) {
       console.error("Invalid exam data", error);
@@ -177,6 +184,8 @@
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.success) throw new Error(data.error || "الرقم الجامعي غير مسجل");
       state.student = { id: inputId, name: String(data.name || "طالب") };
+      state.authToken = typeof data.sessionToken === "string" ? data.sessionToken : null;
+      if (!state.authToken) throw new Error("لم يستلم المتصفح رمز جلسة آمن من الخادم.");
       await startSession();
     } catch (error) {
       console.error("Login failed", error);
@@ -517,13 +526,40 @@
     return Array.from(document.querySelectorAll("#questionsContainer textarea"), (field) => field.value);
   }
 
-  function submitExam(autoSubmitted) {
+  async function flushAuditLog(status) {
+    if (!state.authToken || !state.sessionId || !state.student) return;
+    await Promise.all(state.eventLog.map(async (event) => {
+      if (event.hash === "pending") event.hash = await hashEvent(event);
+    }));
+    persistAuditLog();
+    try {
+      const response = await fetch("/api/events", {
+        method: "POST",
+        keepalive: true,
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.authToken}` },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          studentId: state.student.id,
+          examSubject: state.exam.subject,
+          status,
+          riskScore: state.riskScore,
+          events: state.eventLog,
+        }),
+      });
+      if (!response.ok) console.warn("Audit API rejected the session", response.status);
+    } catch (error) {
+      console.warn("Audit API unavailable; local session copy remains available", error);
+    }
+  }
+
+  async function submitExam(autoSubmitted) {
     if (state.submitted) return;
     if (!autoSubmitted && !window.confirm("هل تريد تسليم الامتحان نهائياً؟")) return;
     state.submitted = true;
     recordEvent("session_submitted", autoSubmitted ? "انتهى الوقت وتم إنهاء الجلسة" : "تم إنهاء الجلسة بواسطة الطالب", 0, "info", { answers: collectAnswers().length });
     for (const timer of state.timers) window.clearInterval(timer);
     state.timers.clear();
+    await flushAuditLog(autoSubmitted ? "expired" : "submitted");
     stopMedia();
     document.querySelectorAll("#questionsContainer textarea, #fileInput").forEach((element) => { element.disabled = true; });
     if (els.submitButton) els.submitButton.disabled = true;

@@ -1,6 +1,12 @@
 {
-  "name": "exam-system",
-  "version": "1.0.0",
+  "name": "hnusis-proctor",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check proctor.js && node --check api/_auth.js && node --check api/login.js && node --check api/events.js && node --check api/exams.js",
+    "check:html": "python3 scripts/check_html.py"
+  },
   "dependencies": {
     "pg": "latest"
   }

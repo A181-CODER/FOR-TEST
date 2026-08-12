@@ -1,48 +1,51 @@
 import { Pool } from 'pg';
+import { createSessionToken } from './_auth.js';
 
-// التأكد من وجود رابط الداتابيز
 if (!process.env.POSTGRES_URL) {
-  throw new Error('Please add your POSTGRES_URL to .env.local');
+  throw new Error('POSTGRES_URL is not configured');
 }
 
 const pool = new Pool({
   connectionString: process.env.POSTGRES_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: { rejectUnauthorized: false },
+  max: 5,
+  idleTimeoutMillis: 10000,
 });
 
+function setCommonHeaders(res) {
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+}
+
+function normalizeId(value) {
+  const id = String(value ?? '').trim();
+  return /^\d{4,20}$/.test(id) ? id : null;
+}
+
 export default async function handler(req, res) {
-  // تضبيط الـ CORS
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCommonHeaders(res);
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  const id = normalizeId(req.body?.id);
+  if (!id) return res.status(400).json({ error: 'الرقم الجامعي غير صالح' });
 
-  if (req.method === 'POST') {
-    const { id } = req.body;
-    console.log("Trying to login with ID:", id); // ده هيظهر في Logs فيرسل
-
-    try {
-      const client = await pool.connect();
-      const result = await client.query('SELECT name FROM students WHERE id = $1', [id]);
-      client.release();
-
-      if (result.rows.length > 0) {
-        console.log("Found:", result.rows[0].name);
-        return res.status(200).json({ success: true, name: result.rows[0].name });
-      } else {
-        console.log("Not Found");
-        return res.status(404).json({ error: 'الرقم غير مسجل' });
-      }
-    } catch (error) {
-      console.error("Database Error:", error);
-      return res.status(500).json({ error: 'خطأ في الاتصال بقاعدة البيانات', details: error.message });
-    }
-  } else {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+  let client;
+  try {
+    client = await pool.connect();
+    const result = await client.query('SELECT id, name FROM students WHERE id = $1', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'الرقم غير مسجل' });
+    const student = result.rows[0];
+    return res.status(200).json({
+      success: true,
+      name: student.name,
+      sessionToken: createSessionToken(student.id),
+      expiresIn: 2 * 60 * 60,
+    });
+  } catch (error) {
+    console.error('Login database error:', error.message);
+    return res.status(500).json({ error: 'تعذر الاتصال بقاعدة البيانات' });
+  } finally {
+    client?.release();
   }
 }
