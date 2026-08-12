@@ -32,7 +32,7 @@
         /* باقي التصميم */
         aside { width: 300px; background: var(--primary); color: white; padding: 20px; display: flex; flex-direction: column; }
         .student-info { text-align: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
-        .avatar { width: 80px; height: 80px; background: #ddd; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--accent); background-image: url('https://cdn-icons-png.flaticon.com/512/3135/3135715.png'); background-size: cover; }
+        .avatar { width: 80px; height: 80px; background: #ddd; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--accent); background-image: url('https://cdn-icons-png.flaticon.com/512/3[...]
         
         main { flex: 1; padding: 30px; display: flex; gap: 20px; position: relative; }
         .exam-sheet { flex: 2; background: white; padding: 30px; border-radius: 10px; display: flex; flex-direction: column; overflow-y: auto; }
@@ -49,10 +49,10 @@
         .upload-box:hover { background: #eef2f5; }
         
         /* شاشة الدخول */
-        .start-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,51,102,0.98); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
+        .start-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,51,102,0.98); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-i[...]
         .login-box { background: white; padding: 40px; border-radius: 15px; text-align: center; color: #333; width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
         .login-input { width: 100%; padding: 15px; font-size: 1.1rem; border: 2px solid #ddd; border-radius: 8px; margin: 20px 0; text-align: center; font-weight: bold; }
-        .btn { background: var(--accent); color: var(--primary); border: none; padding: 15px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 30px; cursor: pointer; transition: 0.2s; width: 100%; }
+        .btn { background: var(--accent); color: var(--primary); border: none; padding: 15px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 30px; cursor: pointer; transition: 0.2s; width: [...]
 
         @keyframes blink { 50% { opacity: 0; } }
         .border-danger { border: 5px solid var(--danger) !important; }
@@ -134,7 +134,12 @@
     </main>
 
     <script>
-               async function checkID() {
+        /*
+        ==========================================
+        ❌ الدالة checkID() معطلة حالياً (DISABLED)
+        ==========================================
+        
+        async function checkID() {
             const inputID = document.getElementById('studentIDInput').value;
             const errorMsg = document.getElementById('errorMsg');
             const btn = document.querySelector('.login-box .btn');
@@ -150,19 +155,16 @@
             errorMsg.style.display = 'none';
 
             try {
-                // الاتصال بالـ API
                 const response = await fetch('/api/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ id: inputID })
                 });
 
-                // لو السيرفر فيه مشكلة (Error 500)
                 if (response.status === 500) {
                     throw new Error("خطأ في السيرفر (تأكد من Environment Variables)");
                 }
                 
-                // لو السيرفر مش موجود أصلاً (Error 404)
                 if (response.status === 404 && response.statusText === 'Not Found') {
                      throw new Error("ملف الـ API غير موجود (تأكد من مجلد api)");
                 }
@@ -170,13 +172,11 @@
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    // ✅ نجاح
                     document.getElementById('displayStudentName').innerText = data.name;
                     document.getElementById('displayStudentID').innerText = inputID;
                     document.getElementById('startScreen').style.display = 'none';
                     initSystem(); 
                 } else {
-                    // ❌ الرقم غلط
                     errorMsg.innerText = "⚠️ " + (data.error || "رقم غير صحيح");
                     errorMsg.style.display = 'block';
                 }
@@ -189,11 +189,12 @@
                 btn.disabled = false;
             }
         }
+        */
 
-        
         let faceMissingCounter = 0; // عداد لغياب الوجه
 
         // 1. التحقق من الطالب
+        /*
         function checkID() {
             const inputID = document.getElementById('studentIDInput').value;
             const studentName = getStudentName(inputID); 
@@ -206,6 +207,7 @@
                 document.getElementById('errorMsg').style.display = 'block';
             }
         }
+        */
 
         // 2. تحميل الامتحان (إصلاح البج)
         function loadExamFromURL() {
@@ -231,7 +233,7 @@
                         qDiv.innerHTML = `
                             <div style="margin-bottom:20px;">
                                 <p style="font-weight:bold; font-size:1.1rem;">س${index+1}: ${qText}</p>
-                                <textarea style="width:100%; height:100px; padding:10px; border:1px solid #ddd; border-radius:5px; resize:none;" placeholder="اكتب الإجابة نصياً هنا..."></textarea>
+                                <textarea style="width:100%; height:100px; padding:10px; border:1px solid #ddd; border-radius:5px; resize:none;" placeholder="اكتب الإجابة نصياً هنا.[...]
                             </div>`;
                         container.appendChild(qDiv);
                     });
@@ -346,23 +348,23 @@
 
         window.addEventListener('DOMContentLoaded', loadExamFromURL);
 
-// ==========================================
-// كود إلغاء البوابة (Bypass Login)
-// ==========================================
-window.addEventListener('DOMContentLoaded', () => {
-    // 1. إخفاء شاشة الدخول
-    document.getElementById('startScreen').style.display = 'none';
+        // ==========================================
+        // ✅ كود الدخول المباشر (Bypass Login) - ACTIVE
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            // 1. إخفاء شاشة الدخول
+            document.getElementById('startScreen').style.display = 'none';
 
-    // 2. وضع بيانات وهمية عشان الشكل
-    document.getElementById('displayStudentName').innerText = "وضع التجربة (Admin)";
-    document.getElementById('displayStudentID').innerText = "000000000";
+            // 2. وضع بيانات وهمية عشان الشكل
+            document.getElementById('displayStudentName').innerText = "وضع التجربة (Admin)";
+            document.getElementById('displayStudentID').innerText = "000000000";
 
-    // 3. تشغيل النظام فوراً
-    initSystem(); 
-});
-// ==========================================
+            // 3. تشغيل النظام فوراً
+            initSystem(); 
+        });
+        // ==========================================
        
-  </script>
+    </script>
 <script>
 document.addEventListener("contextmenu", function(e) {
     e.preventDefault(); // يمنع قائمة كليك يمين
