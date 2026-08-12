@@ -1,373 +1,183 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام الاختبارات الذكي - HNUSIS</title>
-    
-    <!-- مكتبات الذكاء الاصطناعي للمراقبة فقط -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
-    
-    <!-- قاعدة بيانات الطلاب -->
-    <script src="students.js"></script> 
-
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root { --primary: #003366; --accent: #dda15e; --bg: #f4f7f6; --danger: #e74c3c; --safe: #27ae60; }
-        * { box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
-        body { margin: 0; background: var(--bg); height: 100vh; display: flex; overflow: hidden; }
-        
-        /* شاشة الحجب (عقاب إغلاق الكاميرا) */
-        .block-screen {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 10000;
-            display: none; /* مخفي افتراضياً */
-            flex-direction: column; justify-content: center; align-items: center;
-            color: white; text-align: center;
-        }
-        .blink-text { color: red; font-size: 2rem; font-weight: bold; animation: blink 0.5s infinite; }
-        
-        /* باقي التصميم */
-        aside { width: 300px; background: var(--primary); color: white; padding: 20px; display: flex; flex-direction: column; }
-        .student-info { text-align: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
-        .avatar { width: 80px; height: 80px; background: #ddd; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--accent); background-image: url('https://cdn-icons-png.flaticon.com/512/3135/3135715.png'); background-size: cover; }
-        
-        main { flex: 1; padding: 30px; display: flex; gap: 20px; position: relative; }
-        .exam-sheet { flex: 2; background: white; padding: 30px; border-radius: 10px; display: flex; flex-direction: column; overflow-y: auto; }
-        .cam-section { flex: 1; display: flex; flex-direction: column; gap: 15px; }
-
-        .video-container { position: relative; background: #000; border-radius: 10px; overflow: hidden; height: 250px; border: 3px solid #ccc; transition: 0.3s; }
-        video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-        
-        /* خانة رفع الملفات */
-        .upload-box {
-            border: 2px dashed var(--primary); background: #f9f9f9; padding: 20px;
-            text-align: center; margin-top: 20px; border-radius: 10px; cursor: pointer;
-        }
-        .upload-box:hover { background: #eef2f5; }
-        
-        /* شاشة الدخول */
-        .start-overlay { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,51,102,0.98); z-index: 999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; }
-        .login-box { background: white; padding: 40px; border-radius: 15px; text-align: center; color: #333; width: 400px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .login-input { width: 100%; padding: 15px; font-size: 1.1rem; border: 2px solid #ddd; border-radius: 8px; margin: 20px 0; text-align: center; font-weight: bold; }
-        .btn { background: var(--accent); color: var(--primary); border: none; padding: 15px 40px; font-size: 1.2rem; font-weight: bold; border-radius: 30px; cursor: pointer; transition: 0.2s; width: 100%; }
-
-        @keyframes blink { 50% { opacity: 0; } }
-        .border-danger { border: 5px solid var(--danger) !important; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="HNUSIS Secure Examination Platform">
+  <title>بوابة الاختبارات الآمنة - HNUSIS</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary:#003366; --primary-2:#0a4d80; --accent:#dda15e; --bg:#f4f7f6; --danger:#d64545; --warning:#d89016; --safe:#229954; --ink:#182635; --muted:#617083; }
+    * { box-sizing:border-box; font-family:'Tajawal',sans-serif; }
+    body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink); }
+    button, input, textarea { font:inherit; }
+    [hidden] { display:none !important; }
+    .block-screen, .start-overlay, .result-screen { position:fixed; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; text-align:center; }
+    .block-screen { background:rgba(4,12,22,.96); color:#fff; }
+    .result-screen { background:rgba(0,51,102,.97); color:#fff; }
+    .result-card, .login-box { width:min(440px, calc(100% - 32px)); background:#fff; color:var(--ink); border-radius:18px; padding:34px; box-shadow:0 20px 60px rgba(0,0,0,.25); }
+    .result-icon { font-size:4rem; margin-bottom:8px; }
+    .block-card { width:min(550px, calc(100% - 32px)); padding:30px; }
+    .block-card h1 { color:#ff6f61; margin:10px 0; }
+    .start-overlay { background:linear-gradient(145deg, rgba(0,51,102,.99), rgba(10,77,128,.98)); }
+    .login-box h1 { color:var(--primary); margin:0 0 8px; }
+    .login-box p { color:var(--muted); }
+    .login-input { width:100%; padding:14px 16px; border:2px solid #dfe6ec; border-radius:10px; margin:18px 0 12px; text-align:center; font-size:1.1rem; }
+    .login-input:focus, textarea:focus { outline:3px solid rgba(221,161,94,.35); border-color:var(--accent); }
+    .btn { background:var(--accent); color:var(--primary); border:0; padding:13px 22px; border-radius:10px; cursor:pointer; font-weight:800; }
+    .btn:hover { filter:brightness(.97); }
+    .btn:disabled { opacity:.55; cursor:not-allowed; }
+    .btn-secondary { background:#e9eef3; color:var(--primary); }
+    .error-message { color:var(--danger); min-height:24px; }
+    .app-shell { min-height:100vh; display:grid; grid-template-columns:290px 1fr; }
+    aside { background:var(--primary); color:#fff; padding:22px; display:flex; flex-direction:column; gap:20px; }
+    .brand { font-weight:800; letter-spacing:.3px; font-size:1.15rem; }
+    .student-info { text-align:center; border-bottom:1px solid rgba(255,255,255,.14); padding-bottom:22px; }
+    .avatar { width:78px; height:78px; margin:0 auto 10px; border-radius:50%; border:3px solid var(--accent); background:#dce7ef; display:grid; place-items:center; color:var(--primary); font-size:2rem; }
+    .side-card { background:rgba(0,0,0,.18); padding:14px; border-radius:10px; }
+    .side-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid rgba(255,255,255,.1); font-size:.9rem; }
+    .side-row:last-child { border-bottom:0; }
+    main { display:grid; grid-template-columns:minmax(0, 1.65fr) minmax(290px, .85fr); gap:20px; padding:24px; max-width:1500px; width:100%; margin:auto; }
+    .exam-sheet, .monitor-card { background:#fff; border-radius:14px; box-shadow:0 7px 24px rgba(27,55,80,.06); }
+    .exam-sheet { padding:28px; overflow:auto; max-height:calc(100vh - 48px); }
+    .exam-header { border-bottom:2px solid #edf1f4; padding-bottom:16px; margin-bottom:18px; }
+    .exam-meta { display:flex; justify-content:space-between; align-items:center; gap:15px; }
+    .exam-meta h2 { margin:8px 0 0; color:var(--primary); }
+    .timer { font-size:1.5rem; font-weight:800; color:var(--primary); background:#eef2f5; padding:6px 14px; border-radius:8px; white-space:nowrap; }
+    .timer-danger { color:var(--danger); background:#fff0ee; }
+    .question-card { border:1px solid #e3e9ee; border-radius:12px; padding:16px; margin-bottom:14px; }
+    .question-card label { display:block; font-weight:700; line-height:1.7; margin-bottom:10px; }
+    .question-card textarea { width:100%; min-height:110px; padding:12px; border:1px solid #d9e1e7; border-radius:8px; resize:vertical; }
+    .upload-box { border:2px dashed var(--primary-2); background:#f8fbfd; padding:18px; text-align:center; margin:20px 0; border-radius:10px; }
+    .upload-box input { display:none; }
+    .file-name { color:var(--safe); font-weight:700; min-height:24px; }
+    .submit-row { display:flex; justify-content:flex-start; gap:10px; }
+    .monitor-column { display:flex; flex-direction:column; gap:14px; min-height:0; }
+    .monitor-card { padding:15px; }
+    .video-container { position:relative; background:#07111d; border-radius:10px; overflow:hidden; aspect-ratio:4/3; border:3px solid #cdd7df; transition:border-color .2s; }
+    .video-container[data-state="danger"] { border-color:var(--danger); }
+    .video-container[data-state="warning"] { border-color:var(--warning); }
+    video { width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:block; }
+    .video-label { position:absolute; top:10px; right:10px; background:rgba(0,0,0,.65); color:#fff; padding:5px 9px; border-radius:20px; font-size:.78rem; }
+    .monitor-title { margin:0 0 12px; color:var(--primary); }
+    .status-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .status-chip { background:#f4f7f9; border-radius:8px; padding:9px; font-size:.82rem; }
+    .status-chip strong { display:block; margin-top:3px; }
+    .risk-label { display:flex; justify-content:space-between; margin:15px 0 6px; font-size:.85rem; }
+    .risk-track { height:9px; background:#e8edf1; border-radius:99px; overflow:hidden; }
+    .risk-bar { width:0; height:100%; background:var(--safe); transition:width .25s, background .25s; }
+    .risk-bar.medium { background:var(--warning); }
+    .risk-bar.high { background:var(--danger); }
+    .logs { list-style:none; padding:0; margin:0; max-height:280px; overflow:auto; }
+    .log-item { border-bottom:1px solid #edf1f4; padding:8px 0; font-size:.8rem; line-height:1.55; }
+    .log-danger { color:var(--danger); font-weight:700; }
+    .log-warning { color:#96620b; }
+    .log-info { color:var(--muted); }
+    .muted { color:var(--muted); font-size:.86rem; }
+    @media (max-width: 900px) {
+      .app-shell { display:block; }
+      aside { padding:14px; }
+      .student-info { display:flex; align-items:center; gap:12px; text-align:right; padding-bottom:12px; }
+      .avatar { width:54px; height:54px; margin:0; font-size:1.4rem; }
+      .side-card { display:none; }
+      main { grid-template-columns:1fr; padding:12px; }
+      .exam-sheet { max-height:none; }
+      .monitor-column { order:-1; }
+    }
+  </style>
 </head>
 <body>
-
-    <!-- شاشة العقاب (تظهر عند غلق الكاميرا) -->
-    <div class="block-screen" id="cameraBlocker">
-        <div style="font-size: 5rem;">📷🚫</div>
-        <h1 class="blink-text">تحذير أمني!</h1>
-        <h2>تم حجب الامتحان لأن الكاميرا مغلقة أو الوجه غير ظاهر.</h2>
-        <p>أعد توجيه وجهك للكاميرا لفتح الامتحان تلقائياً.</p>
+  <div class="block-screen" id="cameraBlocker" hidden>
+    <div class="block-card">
+      <div class="result-icon" aria-hidden="true">!</div>
+      <h1 id="blockerTitle">تنبيه أمني</h1>
+      <p id="blockerReason">صحح وضع الكاميرا للمتابعة.</p>
+      <p class="muted" style="color:#d5e0e9">لا يتم إرسال صورة الكاميرا إلى الخادم في هذه النسخة؛ تتم المعالجة محلياً.</p>
     </div>
+  </div>
 
-    <!-- شاشة الدخول -->
-    <div class="start-overlay" id="startScreen">
-        <div class="login-box">
-            <h2 style="color:var(--primary); margin:0;">بوابة الاختبارات الآمنة</h2>
-            <p style="color:#777;">HNUSIS - Intelligent Systems</p>
-            <label style="display:block; text-align:right; font-weight:bold; margin-top:20px;">الرقم الجامعي (ID):</label>
-            <input type="number" id="studentIDInput" class="login-input" placeholder="Example: 921240008">
-            <button class="btn" onclick="checkID()">تسجيل الدخول</button>
-            <p id="errorMsg" style="color:red; display:none; margin-top:10px;">⚠️ الرقم غير مسجل!</p>
-        </div>
+  <div class="result-screen" id="resultScreen" hidden>
+    <div class="result-card">
+      <div class="result-icon" aria-hidden="true">✓</div>
+      <h1>تم إنهاء جلسة الامتحان</h1>
+      <p>تم إيقاف الكاميرا والميكروفون وحفظ سجل الجلسة محلياً لهذا المتصفح.</p>
+      <p class="muted">معرّف الجلسة: <strong id="resultSession"></strong></p>
+      <p class="muted">هذه النسخة لا تدعي التسليم المركزي قبل ربط واجهة تسليم خادمية.</p>
     </div>
+  </div>
 
+  <div class="start-overlay" id="startScreen">
+    <div class="login-box">
+      <h1>بوابة الاختبارات الآمنة</h1>
+      <p>HNUSIS — مراقبة محلية مع سجل تدقيق متسلسل</p>
+      <label for="studentIDInput">الرقم الجامعي</label>
+      <input id="studentIDInput" class="login-input" inputmode="numeric" autocomplete="off" maxlength="32" placeholder="أدخل الرقم الجامعي">
+      <button class="btn" type="button" onclick="checkID()">بدء الامتحان</button>
+      <p id="errorMsg" class="error-message" hidden></p>
+      <p class="muted">يتطلب بدء الامتحان السماح بالكاميرا. الميكروفون اختياري للمراقبة المحلية.</p>
+    </div>
+  </div>
+
+  <div class="app-shell">
     <aside>
-        <div class="student-info">
-            <div class="avatar"></div>
-            <h3 id="displayStudentName">---</h3>
-            <div style="background: rgba(255,255,255,0.1); margin-top:10px; padding:5px; border-radius:4px;" id="displayStudentID">---</div>
+      <div class="brand">HNUSIS / Secure Exam</div>
+      <div class="student-info">
+        <div class="avatar" aria-hidden="true">👤</div>
+        <div>
+          <h3 id="displayStudentName" style="margin:0 0 6px">---</h3>
+          <div id="displayStudentID" class="muted" style="color:#d7e5f0">---</div>
         </div>
-        <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px; margin-top: auto;">
-            <div style="display: flex; justify-content: space-between;"><span>المراقب الذكي:</span> <span style="color:#2ecc71" id="aiStatus">نشط</span></div>
-        </div>
+      </div>
+      <div class="side-card">
+        <div class="side-row"><span>المراقبة</span><strong id="aiStatus">غير نشطة</strong></div>
+        <div class="side-row"><span>الصوت</span><strong id="audioStatus">غير نشط</strong></div>
+        <div class="side-row"><span>النافذة</span><strong id="windowStatus">داخل الصفحة</strong></div>
+      </div>
+      <p class="muted" style="color:#c3d5e4; margin-top:auto">المعالجة المحلية لا تعني أن القرار آلي؛ يجب أن يراجع المراقب أي تنبيه قبل اتخاذ إجراء.</p>
     </aside>
 
     <main>
-        <div class="exam-sheet">
-            <div style="border-bottom:2px solid #eee; padding-bottom:15px; margin-bottom:20px;">
-                <strong>أستاذ المادة:</strong> <span id="docNameDisplay">---</span>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
-                    <h2 id="subjectTitle" style="margin:0;">جاري تحميل الامتحان...</h2>
-                    <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary); background: #eee; padding: 5px 15px; border-radius: 5px;" id="timer">00:00</div>
-                </div>
-            </div>
-            
-            <!-- مكان الأسئلة -->
-            <div id="questionsContainer"></div>
-            
-            <!-- خانة رفع الملفات (طلبك الجديد) -->
-            <div class="upload-box" onclick="document.getElementById('fileInput').click()">
-                <h3>📤 رفع ملف الإجابة (PDF / صورة)</h3>
-                <p style="color:#777;">اضغط هنا لاختيار ملف من جهازك</p>
-                <input type="file" id="fileInput" hidden onchange="handleFileUpload(this)">
-                <div id="fileName" style="color:var(--safe); font-weight:bold; margin-top:10px;"></div>
-            </div>
-
-            <button class="btn" style="width:200px; margin-top:20px; font-size:1rem;" onclick="submitExam()">تسليم نهائي</button>
+      <section class="exam-sheet" aria-label="ورقة الامتحان">
+        <div class="exam-header">
+          <div class="muted">المقرر: <span id="docNameDisplay">غير محدد</span></div>
+          <div class="exam-meta">
+            <h2 id="subjectTitle">جاري تحميل الامتحان...</h2>
+            <div class="timer" id="timer" aria-live="polite">00:00</div>
+          </div>
         </div>
-
-        <div class="cam-section">
-            <div class="video-container" id="camBox">
-                <div style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.7); color: white; padding: 5px 10px; border-radius: 20px; font-size: 0.8rem;">
-                    🔴 AI Monitor
-                </div>
-                <video id="input_video" autoplay playsinline muted></video>
-            </div>
-            <div style="background: white; padding: 15px; border-radius: 10px; flex:1; overflow-y: auto;">
-                <h4 style="margin:0 0 10px 0; color:var(--primary);">سجل المراقبة:</h4>
-                <ul id="logs" style="list-style: none; padding: 0; font-size: 0.85rem; color: #555;"></ul>
-            </div>
-            <div>
-                جميع الحقوق محفوظة ل KING ABDO©️
-            </div>
+        <div id="questionsContainer"></div>
+        <div class="upload-box">
+          <strong>إرفاق ملف الإجابة الاختياري</strong>
+          <p class="muted">PDF أو JPG أو PNG، وبحجم أقصى 10MB.</p>
+          <label class="btn btn-secondary" for="fileInput">اختيار ملف</label>
+          <input type="file" id="fileInput" accept="application/pdf,image/jpeg,image/png" onchange="handleFileUpload(this)">
+          <div class="file-name" id="fileName"></div>
         </div>
-        
+        <div class="submit-row">
+          <button class="btn" id="submitButton" type="button" onclick="submitExam(false)">تسليم نهائي</button>
+        </div>
+      </section>
+
+      <section class="monitor-column" aria-label="لوحة المراقبة">
+        <div class="monitor-card">
+          <div class="video-container" id="camBox" data-state="neutral">
+            <div class="video-label">AI Monitor — محلي</div>
+            <video id="input_video" autoplay playsinline muted></video>
+          </div>
+          <div class="risk-label"><span>درجة المخاطر التراكمية</span><strong id="riskScore">0/100</strong></div>
+          <div class="risk-track"><div class="risk-bar" id="riskBar"></div></div>
+        </div>
+        <div class="monitor-card" style="flex:1; min-height:0">
+          <h3 class="monitor-title">سجل المراقبة</h3>
+          <p class="muted">السجل المحلي متسلسل بالهاش لأغراض التدقيق، ولا يمثل وحده دليلاً نهائياً على الغش.</p>
+          <ul id="logs" class="logs"></ul>
+        </div>
+        <div class="monitor-card muted" id="sessionLabel">لا توجد جلسة نشطة</div>
+      </section>
     </main>
-
-    <script>
-               async function checkID() {
-            const inputID = document.getElementById('studentIDInput').value;
-            const errorMsg = document.getElementById('errorMsg');
-            const btn = document.querySelector('.login-box .btn');
-
-            if (!inputID) {
-                errorMsg.innerText = "⚠️ اكتب الرقم الجامعي";
-                errorMsg.style.display = 'block';
-                return;
-            }
-
-            btn.innerText = "جاري الاتصال بالسيرفر...";
-            btn.disabled = true;
-            errorMsg.style.display = 'none';
-
-            try {
-                // الاتصال بالـ API
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id: inputID })
-                });
-
-                // لو السيرفر فيه مشكلة (Error 500)
-                if (response.status === 500) {
-                    throw new Error("خطأ في السيرفر (تأكد من Environment Variables)");
-                }
-                
-                // لو السيرفر مش موجود أصلاً (Error 404)
-                if (response.status === 404 && response.statusText === 'Not Found') {
-                     throw new Error("ملف الـ API غير موجود (تأكد من مجلد api)");
-                }
-
-                const data = await response.json();
-
-                if (response.ok && data.success) {
-                    // ✅ نجاح
-                    document.getElementById('displayStudentName').innerText = data.name;
-                    document.getElementById('displayStudentID').innerText = inputID;
-                    document.getElementById('startScreen').style.display = 'none';
-                    initSystem(); 
-                } else {
-                    // ❌ الرقم غلط
-                    errorMsg.innerText = "⚠️ " + (data.error || "رقم غير صحيح");
-                    errorMsg.style.display = 'block';
-                }
-            } catch (err) {
-                console.error(err);
-                errorMsg.innerText = "⚠️ " + err.message;
-                errorMsg.style.display = 'block';
-            } finally {
-                btn.innerText = "تسجيل الدخول";
-                btn.disabled = false;
-            }
-        }
-
-        
-        let faceMissingCounter = 0; // عداد لغياب الوجه
-
-        // 1. التحقق من الطالب
-        function checkID() {
-            const inputID = document.getElementById('studentIDInput').value;
-            const studentName = getStudentName(inputID); 
-            if (studentName) {
-                document.getElementById('displayStudentName').innerText = studentName;
-                document.getElementById('displayStudentID').innerText = inputID;
-                document.getElementById('startScreen').style.display = 'none';
-                initSystem(); 
-            } else {
-                document.getElementById('errorMsg').style.display = 'block';
-            }
-        }
-
-        // 2. تحميل الامتحان (إصلاح البج)
-        function loadExamFromURL() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const data = urlParams.get('data');
-            if (data) {
-                try {
-                    // فك التشفير بعناية
-                    const jsonString = decodeURIComponent(escape(atob(data)));
-                    const decodedData = JSON.parse(jsonString);
-
-                    document.getElementById('subjectTitle').innerText = decodedData.s;
-                    document.getElementById('docNameDisplay').innerText = decodedData.doc || "غير محدد";
-                    
-                    // تشغيل التايمر
-                    startTimer(decodedData.t * 60);
-                    
-                    // عرض الأسئلة
-                    const container = document.getElementById('questionsContainer');
-                    container.innerHTML = "";
-                    decodedData.q.forEach((qText, index) => {
-                        const qDiv = document.createElement('div');
-                        qDiv.innerHTML = `
-                            <div style="margin-bottom:20px;">
-                                <p style="font-weight:bold; font-size:1.1rem;">س${index+1}: ${qText}</p>
-                                <textarea style="width:100%; height:100px; padding:10px; border:1px solid #ddd; border-radius:5px; resize:none;" placeholder="اكتب الإجابة نصياً هنا..."></textarea>
-                            </div>`;
-                        container.appendChild(qDiv);
-                    });
-                } catch (e) {
-                    console.error(e);
-                    document.getElementById('subjectTitle').innerText = "خطأ في تحميل الامتحان";
-                }
-            } else {
-                document.getElementById('subjectTitle').innerText = "لا يوجد امتحان (وضع التجربة)";
-            }
-        }
-
-        // 3. معالجة رفع الملفات (مجرد عرض اسم الملف لأننا Static)
-        function handleFileUpload(input) {
-            if (input.files && input.files[0]) {
-                document.getElementById('fileName').innerText = "✅ تم إرفاق: " + input.files[0].name;
-            }
-        }
-
-        // 4. نظام المراقبة الصارم (Google MediaPipe)
-        function initSystem() {
-            const videoElement = document.getElementById('input_video');
-            const faceMesh = new FaceMesh({locateFile: (file) => {
-                return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-            }});
-
-            faceMesh.setOptions({
-                maxNumFaces: 1,
-                refineLandmarks: true,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-
-            faceMesh.onResults(onResults);
-
-            const camera = new Camera(videoElement, {
-                onFrame: async () => {
-                    await faceMesh.send({image: videoElement});
-                },
-                width: 640,
-                height: 480
-            });
-            camera.start();
-        }
-
-        // "المخ" الخاص بالمراقبة
-        function onResults(results) {
-            const blocker = document.getElementById('cameraBlocker');
-            const camBox = document.getElementById('camBox');
-
-            // 1. هل الوجه موجود؟
-            if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-                // الوجه موجود -> افتح الامتحان
-                faceMissingCounter = 0;
-                blocker.style.display = "none"; 
-                camBox.className = "video-container"; // إطار طبيعي
-
-                // تحليل الغش (يمين/يسار)
-                const landmarks = results.multiFaceLandmarks[0];
-                const nose = landmarks[1];
-                const leftEar = landmarks[234];
-                const rightEar = landmarks[454];
-                const ratio = Math.abs(nose.x - leftEar.x) / (Math.abs(nose.x - rightEar.x) + 0.001);
-
-                if (ratio > 3.0) logCheating("التفات لليسار");
-                else if (ratio < 0.33) logCheating("التفات لليمين");
-
-            } else {
-                // الوجه غير موجود (مغلق الكاميرا أو بعيد)
-                faceMissingCounter++;
-                if (faceMissingCounter > 10) { // لو اختفى لأكثر من ثانية تقريباً
-                    blocker.style.display = "flex"; // اقفل الشاشة
-                    camBox.className = "video-container border-danger"; // برواز أحمر
-                }
-            }
-        }
-
-        // تسجيل الغش في السجل
-        let lastLogTime = 0;
-        function logCheating(msg) {
-            const now = Date.now();
-            if (now - lastLogTime > 3000) {
-                const ul = document.getElementById('logs');
-                const li = document.createElement('li');
-                li.innerHTML = `<span style="color:red; font-weight:bold;">⚠️ ${msg}</span> <span style="font-size:0.8em">(${new Date().toLocaleTimeString()})</span>`;
-                ul.prepend(li);
-                lastLogTime = now;
-            }
-        }
-
-        // التايمر
-        function startTimer(duration) {
-            let time = duration || 3600;
-            const el = document.getElementById('timer');
-            const interval = setInterval(() => {
-                time--;
-                let m = Math.floor(time / 60);
-                let s = time % 60;
-                el.innerText = `${m}:${s < 10 ? '0'+s : s}`;
-                if (time <= 0) {
-                    clearInterval(interval);
-                    alert("انتهى الوقت!");
-                    submitExam();
-                }
-            }, 1000);
-        }
-
-        function submitExam() {
-            alert("تم تسليم الامتحان بنجاح!");
-            window.location.reload();
-        }
-
-        window.addEventListener('DOMContentLoaded', loadExamFromURL);
-
-// ==========================================
-// كود إلغاء البوابة (Bypass Login)
-// ==========================================
-window.addEventListener('DOMContentLoaded', () => {
-    // 1. إخفاء شاشة الدخول
-    document.getElementById('startScreen').style.display = 'none';
-
-    // 2. وضع بيانات وهمية عشان الشكل
-    document.getElementById('displayStudentName').innerText = "وضع التجربة (Admin)";
-    document.getElementById('displayStudentID').innerText = "000000000";
-
-    // 3. تشغيل النظام فوراً
-    initSystem(); 
-});
-// ==========================================
-       
-  </script>
-<script>
-document.addEventListener("contextmenu", function(e) {
-    e.preventDefault(); // يمنع قائمة كليك يمين
-    alert("الضغط بالزر الأيمن معطل!"); // اختياري لإظهار رسالة
-});
-</script>
+  </div>
+  <script src="/proctor.js" defer></script>
 </body>
 </html>
