@@ -12,7 +12,7 @@ const pool = new Pool({
 const EVENT_TYPES = new Set([
   'session_started', 'session_submitted', 'face_missing', 'multiple_faces', 'look_away',
   'audio_activity', 'tab_hidden', 'tab_visible', 'window_blur', 'fullscreen_exit',
-  'fullscreen_unavailable', 'blocked_copy', 'blocked_cut', 'blocked_paste', 'blocked_contextmenu',
+  'fullscreen_unavailable', 'object_detected', 'blocked_copy', 'blocked_cut', 'blocked_paste', 'blocked_contextmenu',
   'blocked_dragstart', 'blocked_shortcut', 'answer_file_selected',
 ]);
 const SEVERITIES = new Set(['info', 'warning', 'danger']);

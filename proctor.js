@@ -27,6 +27,7 @@
     audioContext: null,
     analyser: null,
     audioData: null,
+    objectModel: null,
     timers: new Set(),
     eventLog: [],
     lastEventAt: new Map(),
@@ -63,6 +64,7 @@
     logs: $("logs"),
     aiStatus: $("aiStatus"),
     audioStatus: $("audioStatus"),
+    objectStatus: $("objectStatus"),
     windowStatus: $("windowStatus"),
     riskScore: $("riskScore"),
     riskBar: $("riskBar"),
@@ -230,6 +232,7 @@
       state.timers.add(window.setInterval(() => { if (!state.submitted) flushAuditLog("active"); }, 15000));
       await enterFullscreen();
       await initFaceMesh();
+      void initObjectDetection();
       recordEvent("session_started", "بدأت جلسة الامتحان", 0, "info", { studentId: state.student.id });
     } catch (error) {
       console.error("Could not start session", error);
@@ -334,6 +337,37 @@
     if (visible) {
       setText(els.blockerTitle, "تنبيه أمني");
       setText(els.blockerReason, reason || "صحح وضع الكاميرا للمتابعة.");
+    }
+  }
+
+  async function initObjectDetection() {
+    if (typeof cocoSsd === "undefined") {
+      setText(els.objectStatus, "غير متاح");
+      return;
+    }
+    try {
+      state.objectModel = await cocoSsd.load({ base: "lite_mobilenet_v2" });
+      setText(els.objectStatus, "محلي فقط");
+      const timer = window.setInterval(detectObjects, 2500);
+      state.timers.add(timer);
+    } catch (error) {
+      console.warn("Object detection unavailable", error);
+      setText(els.objectStatus, "غير متاح");
+    }
+  }
+
+  async function detectObjects() {
+    if (!state.objectModel || state.submitted || !els.video?.videoWidth) return;
+    try {
+      const predictions = await state.objectModel.detect(els.video, 10, 0.58);
+      const relevant = predictions
+        .filter((prediction) => ["cell phone", "laptop", "book", "remote"].includes(prediction.class))
+        .sort((a, b) => b.score - a.score)[0];
+      if (!relevant) return;
+      const risk = relevant.class === "cell phone" ? 12 : 6;
+      recordEvent("object_detected", `تم رصد عنصر يحتاج إلى مراجعة: ${relevant.class}`, risk, "warning", { objectClass: relevant.class, confidence: Number(relevant.score.toFixed(2)) });
+    } catch (error) {
+      console.warn("Object detection frame failed", error);
     }
   }
 

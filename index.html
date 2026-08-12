@@ -7,6 +7,8 @@
   <title>بوابة الاختبارات الآمنة - HNUSIS</title>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.3/dist/coco-ssd.min.js" crossorigin="anonymous"></script>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
   <style>
     :root { --primary:#003366; --primary-2:#0a4d80; --accent:#dda15e; --bg:#f4f7f6; --danger:#d64545; --warning:#d89016; --safe:#229954; --ink:#182635; --muted:#617083; }
@@ -133,6 +135,7 @@
       <div class="side-card">
         <div class="side-row"><span>المراقبة</span><strong id="aiStatus">غير نشطة</strong></div>
         <div class="side-row"><span>الصوت</span><strong id="audioStatus">غير نشط</strong></div>
+        <div class="side-row"><span>الأجهزة</span><strong id="objectStatus">غير نشطة</strong></div>
         <div class="side-row"><span>النافذة</span><strong id="windowStatus">داخل الصفحة</strong></div>
       </div>
       <p class="muted" style="color:#c3d5e4; margin-top:auto">المعالجة المحلية لا تعني أن القرار آلي؛ يجب أن يراجع المراقب أي تنبيه قبل اتخاذ إجراء.</p>
