@@ -227,6 +227,7 @@
       installSecurityHandlers();
       startTimer();
       startAudioMonitoring();
+      state.timers.add(window.setInterval(() => { if (!state.submitted) flushAuditLog("active"); }, 15000));
       await enterFullscreen();
       await initFaceMesh();
       recordEvent("session_started", "بدأت جلسة الامتحان", 0, "info", { studentId: state.student.id });

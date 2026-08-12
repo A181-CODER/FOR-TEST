@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>مراقبة الجلسات - HNUSIS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary:#003366; --bg:#f3f6f8; --danger:#c0392b; --warning:#a86c09; --safe:#15803d; }
+    * { box-sizing:border-box; font-family:'Tajawal',sans-serif; }
+    body { margin:0; background:var(--bg); color:#1c2b39; padding:24px 14px; }
+    .container { max-width:1250px; margin:auto; }
+    .header, .card { background:#fff; border-radius:14px; padding:20px; box-shadow:0 8px 24px rgba(31,57,79,.06); }
+    .header { display:flex; align-items:end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+    h1, h2 { color:var(--primary); margin:0 0 8px; }
+    .controls { display:flex; gap:8px; flex-wrap:wrap; }
+    input { padding:10px; border:1px solid #d6e0e7; border-radius:8px; min-width:280px; }
+    button { border:0; border-radius:8px; padding:10px 15px; background:var(--primary); color:#fff; cursor:pointer; font-weight:700; }
+    .error { color:var(--danger); min-height:22px; }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; min-width:850px; }
+    th, td { text-align:right; padding:11px 8px; border-bottom:1px solid #e6edf1; vertical-align:top; }
+    th { color:var(--primary); background:#f7fafc; }
+    .badge { display:inline-block; padding:4px 8px; border-radius:20px; font-size:.8rem; }
+    .active { background:#e8f7ed; color:var(--safe); }
+    .submitted { background:#edf1f5; color:#536577; }
+    .expired, .abandoned { background:#fff0ee; color:var(--danger); }
+    .risk { font-weight:800; }
+    .risk-high { color:var(--danger); }
+    .risk-medium { color:var(--warning); }
+    .risk-low { color:var(--safe); }
+    .details { margin-top:16px; }
+    .event { padding:8px; border-bottom:1px solid #edf1f4; }
+    .event-danger { color:var(--danger); font-weight:700; }
+    .event-warning { color:var(--warning); }
+    .muted { color:#657687; font-size:.88rem; }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="header">
+      <div>
+        <h1>مراقبة جلسات الامتحان</h1>
+        <p class="muted">البيانات المعروضة هي أحداث منظمة؛ لا توجد صور كاميرا في لوحة المتابعة.</p>
+      </div>
+      <div class="controls">
+        <input id="adminKey" type="password" autocomplete="off" placeholder="ADMIN_API_KEY">
+        <button type="button" onclick="loadSessions()">تحديث الآن</button>
+      </div>
+    </section>
+    <p class="error" id="errorMessage" role="alert"></p>
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>الطالب</th><th>المادة</th><th>البداية</th><th>الحالة</th><th>المخاطر</th><th>الأحداث</th><th>آخر حدث</th><th></th></tr></thead>
+          <tbody id="sessionRows"><tr><td colspan="8" class="muted">أدخل مفتاح الإدارة واضغط تحديث.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="card details" id="details" hidden>
+      <h2>تفاصيل الأحداث</h2>
+      <p class="muted" id="detailsLabel"></p>
+      <div id="eventList"></div>
+    </section>
+  </main>
+  <script>
+    "use strict";
+    const errorMessage = document.getElementById("errorMessage");
+    const rows = document.getElementById("sessionRows");
+    const details = document.getElementById("details");
+    const eventList = document.getElementById("eventList");
+    function adminHeaders() { return { "X-Admin-Key": document.getElementById("adminKey").value }; }
+    function riskClass(score) { return score >= 70 ? "risk-high" : score >= 35 ? "risk-medium" : "risk-low"; }
+    function escapeText(value) { return String(value ?? ""); }
+    async function loadSessions() {
+      errorMessage.textContent = "";
+      if (!document.getElementById("adminKey").value) { errorMessage.textContent = "أدخل مفتاح الإدارة."; return; }
+      try {
+        const response = await fetch("/api/sessions", { headers: adminHeaders(), cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "تعذر تحميل الجلسات");
+        rows.replaceChildren();
+        if (!data.sessions?.length) { rows.innerHTML = '<tr><td colspan="8" class="muted">لا توجد جلسات خلال آخر 24 ساعة.</td></tr>'; return; }
+        data.sessions.forEach((session) => {
+          const row = document.createElement("tr");
+          const status = document.createElement("span");
+          status.className = `badge ${session.status}`;
+          status.textContent = session.status;
+          row.innerHTML = `<td>${escapeText(session.student_name)}<br><span class="muted">${escapeText(session.student_id)}</span></td><td>${escapeText(session.exam_subject)}</td><td>${new Date(session.started_at).toLocaleString("ar-EG")}</td><td></td><td class="risk ${riskClass(session.risk_score)}">${escapeText(session.risk_score)}/100</td><td>${escapeText(session.event_count)}</td><td>${escapeText(session.latest_event)}</td><td><button type="button">التفاصيل</button></td>`;
+          row.children[3].appendChild(status);
+          row.querySelector("button").addEventListener("click", () => loadDetails(session.session_id, session.student_name));
+          rows.appendChild(row);
+        });
+      } catch (error) { errorMessage.textContent = error.message; }
+    }
+    async function loadDetails(sessionId, studentName) {
+      try {
+        const response = await fetch(`/api/sessions?sessionId=${encodeURIComponent(sessionId)}`, { headers: adminHeaders(), cache: "no-store" });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || "تعذر تحميل الأحداث");
+        document.getElementById("detailsLabel").textContent = `الطالب: ${studentName} — الجلسة: ${sessionId}`;
+        eventList.replaceChildren();
+        data.events.forEach((event) => {
+          const item = document.createElement("div");
+          item.className = `event event-${event.severity}`;
+          item.textContent = `#${event.sequence_no} — ${event.message} — ${new Date(event.occurred_at).toLocaleString("ar-EG")}`;
+          eventList.appendChild(item);
+        });
+        details.hidden = false;
+        details.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (error) { errorMessage.textContent = error.message; }
+    }
+  </script>
+</body>
+</html>

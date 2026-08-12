@@ -11,7 +11,7 @@ class HTMLCheck(HTMLParser):
         self.errors.append(message)
 
 
-for filename in ("index.html", "admin.html"):
+for filename in ("index.html", "admin.html", "monitor.html"):
     parser = HTMLCheck()
     parser.feed(Path(filename).read_text(encoding="utf-8"))
     parser.close()
