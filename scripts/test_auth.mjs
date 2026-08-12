@@ -15,4 +15,4 @@ const exam = verifyExamToken(examToken);
 assert.equal(exam.examId, '00000000-0000-4000-8000-000000000001');
 assert.equal(verifyExamToken(`${examToken}x`), null);
 
-console.log('auth token tests: OK');
+console.log('all enterprise auth and exam token tests: OK');

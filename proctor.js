@@ -554,6 +554,7 @@
       return;
     }
     setText(els.fileName, `تم إرفاق: ${file.name}`);
+    state.attachment = { name: file.name, size: file.size, type: file.type };
     recordEvent("answer_file_selected", "تم اختيار ملف إجابة", 0, "info", { name: file.name, size: file.size, type: file.type });
   }
 
@@ -595,6 +596,24 @@
     for (const timer of state.timers) window.clearInterval(timer);
     state.timers.clear();
     await flushAuditLog(autoSubmitted ? "expired" : "submitted");
+    try {
+      const response = await fetch("/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${state.authToken}` },
+        body: JSON.stringify({
+          sessionId: state.sessionId,
+          studentId: state.student?.id,
+          examId: state.exam?.examId || null,
+          examSubject: state.exam?.subject || "اختبار",
+          answers: collectAnswers(),
+          attachment: state.attachment || null,
+        }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) console.warn("Submission API rejected answers", data.error);
+    } catch (error) {
+      console.warn("Submission API unavailable; audit log and local session state remain recorded", error);
+    }
     stopMedia();
     document.querySelectorAll("#questionsContainer textarea, #fileInput").forEach((element) => { element.disabled = true; });
     if (els.submitButton) els.submitButton.disabled = true;
