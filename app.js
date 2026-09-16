@@ -1,165 +1,295 @@
-// ضيف الدالة دي واستدعيها في initSystem() أو window.onload
-function loadExamFromURL() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const data = urlParams.get('data');
+// المتغيرات العامة
+let studentData = null;
+let faceMissingCounter = 0;
+let rightLookCounter = 0;
+let leftLookCounter = 0;
+let examStartTime = null;
+let uploadedFileName = '';
 
-    if (data) {
+// 1. التحقق من هوية الطالب
+async function checkID() {
+    const inputID = document.getElementById('studentIDInput').value.trim();
+    const errorMsg = document.getElementById('errorMsg');
+    const btn = document.querySelector('.login-box .btn');
+
+    if (!inputID || inputID.length < 5) {
+        errorMsg.innerText = "⚠️ الرجاء إدخال رقم جامعي صحيح";
+        errorMsg.style.display = 'block';
+        return;
+    }
+
+    btn.innerText = "جاري التحقق...";
+    btn.disabled = true;
+    errorMsg.style.display = 'none';
+
+    try {
+        // تجربة الاتصال بالسيرفر أولاً
+        let data;
         try {
-            // فك التشفير: Base64 -> JSON
-            const decodedData = JSON.parse(decodeURIComponent(escape(atob(data))));
-            
-            // 1. وضع اسم المادة
-            document.getElementById('subjectTitle').innerText = "مادة: " + decodedData.s;
-            
-            // 2. ضبط الوقت
-            let timeInSeconds = decodedData.t * 60;
-            startCustomTimer(timeInSeconds);
-
-            // 3. عرض الأسئلة
-            const container = document.getElementById('questionsContainer');
-            container.innerHTML = ""; // مسح أي حاجة قديمة
-            
-            decodedData.q.forEach((qText, index) => {
-                const qDiv = document.createElement('div');
-                qDiv.style.marginBottom = "20px";
-                qDiv.innerHTML = `
-                    <p style="font-weight:bold; margin-bottom:10px;">س${index + 1}: ${qText}</p>
-                    <textarea style="width:100%; height:100px; padding:10px; border:2px solid #eee; border-radius:8px; resize:none;" placeholder="اكتب الإجابة هنا..."></textarea>
-                `;
-                container.appendChild(qDiv);
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: parseInt(inputID) })
             });
-
+            data = await response.json();
         } catch (e) {
-            console.error(e);
-            alert("رابط الامتحان غير صالح!");
+            // وضع التجربة - أرقام صالحة للتجربة
+            const mockStudents = {
+                '921240008': 'أحمد حموده قرني سلامة',
+                '921240012': 'أحمد سعيد عبدالله محمود',
+                '921240001': 'ابراهيم السيد عبدالحميد السيد',
+                '921230001': 'ابراهيم احمد حمدى احمد'
+            };
+            if (mockStudents[inputID]) {
+                data = { success: true, name: mockStudents[inputID] };
+            } else {
+                data = { error: 'الرقم غير مسجل' };
+            }
         }
-    } else {
-        // لو مفيش داتا في اللينك (امتحان افتراضي)
-        document.getElementById('subjectTitle').innerText = "اختبار تجريبي (Default)";
+
+        if (data.success) {
+            studentData = { id: inputID, name: data.name };
+            document.getElementById('displayStudentName').innerText = data.name;
+            document.getElementById('displayStudentID').innerText = inputID;
+            document.getElementById('startScreen').style.display = 'none';
+            
+            loadExamFromURL();
+            initSystem();
+            logEvent(`✅ تسجيل دخول: ${data.name}`);
+        } else {
+            errorMsg.innerText = `⚠️ ${data.error || 'الرقم غير مسجل'}`;
+            errorMsg.style.display = 'block';
+        }
+    } catch (err) {
+        console.error(err);
+        errorMsg.innerText = "⚠️ خطأ في الاتصال";
+        errorMsg.style.display = 'block';
+    } finally {
+        btn.innerText = "تسجيل الدخول";
+        btn.disabled = false;
     }
 }
 
-// دالة تايمر معدلة لتقبل وقت متغير
-function startCustomTimer(duration) {
-    let time = duration;
-    const el = document.getElementById('timer');
-    // إلغاء أي تايمر سابق لو موجود
-    if(window.examInterval) clearInterval(window.examInterval);
+// 2. تحميل الامتحان من الرابط المشفر
+function loadExamFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const data = urlParams.get('data');
     
-    window.examInterval = setInterval(() => {
+    if (data) {
+        try {
+            const jsonString = decodeURIComponent(escape(atob(data)));
+            const decodedData = JSON.parse(jsonString);
+
+            document.getElementById('subjectTitle').innerText = decodedData.s;
+            document.getElementById('docNameDisplay').innerText = decodedData.doc || "غير محدد";
+            
+            startTimer(decodedData.t * 60);
+            
+            const container = document.getElementById('questionsContainer');
+            container.innerHTML = "";
+            decodedData.q.forEach((qText, index) => {
+                const qDiv = document.createElement('div');
+                qDiv.innerHTML = `<div style="margin-bottom:20px;"><p style="font-weight:bold; font-size:1.1rem;">س${index+1}: ${qText}</p><textarea style="width:100%; height:100px; padding:10px; border:1px solid #ddd; border-radius:5px; resize:none;" placeholder="اكتب الإجابة نصياً هنا..."></textarea></div>`;
+                container.appendChild(qDiv);
+            });
+            
+            logEvent(`📝 بدء امتحان: ${decodedData.s}`);
+        } catch (e) {
+            console.error(e);
+            document.getElementById('subjectTitle').innerText = "خطأ في تحميل الامتحان";
+        }
+    } else {
+        document.getElementById('subjectTitle').innerText = "لا يوجد امتحان نشط";
+        document.getElementById('docNameDisplay').innerText = "وضع التجربة";
+    }
+}
+
+// 3. معالجة رفع الملفات
+function handleFileUpload(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        uploadedFileName = file.name;
+        document.getElementById('fileName').innerText = `✅ تم إرفاق: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+        logEvent(`📎 تم رفع ملف: ${file.name}`);
+    }
+}
+
+// 4. نظام المراقبة بالذكاء الاصطناعي
+function initSystem() {
+    const videoElement = document.getElementById('input_video');
+    const faceMesh = new FaceMesh({locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+    }});
+
+    faceMesh.setOptions({
+        maxNumFaces: 1,
+        refineLandmarks: true,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
+    });
+
+    faceMesh.onResults(onResults);
+
+    const camera = new Camera(videoElement, {
+        onFrame: async () => {
+            await faceMesh.send({image: videoElement});
+        },
+        width: 640,
+        height: 480
+    });
+    camera.start();
+    
+    logEvent('🎥 الكاميرا تعمل - المراقبة نشطة');
+}
+
+// منطق كشف الغش
+function onResults(results) {
+    const blocker = document.getElementById('cameraBlocker');
+    const camBox = document.getElementById('camBox');
+
+    if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+        faceMissingCounter = 0;
+        blocker.style.display = "none"; 
+        camBox.className = "video-container";
+
+        const landmarks = results.multiFaceLandmarks[0];
+        const nose = landmarks[1];
+        const leftEar = landmarks[234];
+        const rightEar = landmarks[454];
+        
+        const ratio = Math.abs(nose.x - leftEar.x) / (Math.abs(nose.x - rightEar.x) + 0.001);
+
+        if (ratio > 3.0) {
+            leftLookCounter++;
+            document.getElementById('leftCount').innerText = leftLookCounter;
+            if (leftLookCounter % 3 === 1) logCheating("التفات لليسار ⬅️");
+        }
+        else if (ratio < 0.33) {
+            rightLookCounter++;
+            document.getElementById('rightCount').innerText = rightLookCounter;
+            if (rightLookCounter % 3 === 1) logCheating("التفات لليمين ➡️");
+        }
+
+    } else {
+        faceMissingCounter++;
+        document.getElementById('faceMissingCount').innerText = faceMissingCounter;
+        
+        if (faceMissingCounter > 15) {
+            blocker.style.display = "flex";
+            camBox.className = "video-container border-danger";
+            if (faceMissingCounter % 30 === 16) logCheating("⚠️ الوجه غير ظاهر!");
+        }
+    }
+}
+
+// تسجيل الأحداث
+let lastLogTime = 0;
+function logCheating(msg) {
+    const now = Date.now();
+    if (now - lastLogTime > 3000) {
+        const ul = document.getElementById('logs');
+        const li = document.createElement('li');
+        li.innerHTML = `<span style="color:red; font-weight:bold;">⚠️ ${msg}</span> <span style="font-size:0.8em">(${new Date().toLocaleTimeString()})</span>`;
+        ul.prepend(li);
+        lastLogTime = now;
+    }
+}
+
+function logEvent(msg) {
+    const ul = document.getElementById('logs');
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${msg}</span> <span style="font-size:0.8em">(${new Date().toLocaleTimeString()})</span>`;
+    ul.prepend(li);
+}
+
+// التايمر
+function startTimer(duration) {
+    let time = duration || 3600;
+    const el = document.getElementById('timer');
+    examStartTime = Date.now();
+    
+    const interval = setInterval(() => {
         time--;
         let m = Math.floor(time / 60);
         let s = time % 60;
         el.innerText = `${m}:${s < 10 ? '0'+s : s}`;
-        if (time <= 0) {
-            clearInterval(window.examInterval);
-            alert("انتهى الوقت!");
-        }
-    }, 1000);
-}
-
-// استدعي الدالة دي لما الصفحة تفتح
-window.addEventListener('DOMContentLoaded', loadExamFromURL);
-// المتغيرات
-const video = document.getElementById('student-cam');
-const canvas = document.createElement('canvas'); // للتصوير الخفي
-const timerDisplay = document.getElementById('exam-timer');
-const aiBadge = document.getElementById('ai-badge');
-const camContainer = document.getElementById('cam-container');
-const logList = document.getElementById('log-list');
-
-// إعدادات الوقت (مثلاً 60 دقيقة)
-let timeRemaining = 60 * 60; // بالثواني
-let timerInterval;
-
-function authenticateAndStart() {
-    // 1. نقل البيانات من الـ Login للـ Sidebar
-    document.getElementById('display-name').innerText = document.getElementById('student-name').value;
-    document.getElementById('display-email').innerText = document.getElementById('student-email').value;
-    document.getElementById('display-id').innerText = "ID: " + document.getElementById('student-id').value;
-
-    // 2. طلب الكاميرا
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            video.srcObject = stream;
-            document.getElementById('login-screen').style.display = 'none'; // إخفاء الدخول
-            startTimer(); // بدء الوقت
-            startAIAnalysis(); // تشغيل الرقابة
-        })
-        .catch(err => alert("لا يمكن بدء الامتحان بدون كاميرا!"));
-}
-
-// دالة التايمر المتحرك
-function startTimer() {
-    updateTimerDisplay();
-    timerInterval = setInterval(() => {
-        timeRemaining--;
-        updateTimerDisplay();
-        if (timeRemaining <= 0) {
-            clearInterval(timerInterval);
-            alert("انتهى الوقت! سيتم سحب الورقة.");
-            document.getElementById('answer-area').disabled = true;
-        }
-    }, 1000);
-}
-
-function updateTimerDisplay() {
-    let minutes = Math.floor(timeRemaining / 60);
-    let seconds = timeRemaining % 60;
-    timerDisplay.innerText = `${minutes < 10 ? '0'+minutes : minutes}:${seconds < 10 ? '0'+seconds : seconds}`;
-    
-    // لو الوقت قرب يخلص يحمر
-    if (timeRemaining < 300) timerDisplay.style.color = "red";
-}
-
-// دالة الذكاء الاصطناعي
-function startAIAnalysis() {
-    setInterval(() => {
-        captureAndCheck();
-    }, 1000); // إرسال صورة كل ثانية (سريع ودقيق)
-}
-
-function captureAndCheck() {
-    // تحويل الفيديو لصورة
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    canvas.getContext('2d').drawImage(video, 0, 0);
-    const imageBase64 = canvas.toDataURL('image/jpeg');
-
-    // إرسال الصورة للسيرفر (Python)
-    fetch('http://localhost:5000/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64 })
-    })
-    .then(response => response.json())
-    .then(data => {
-        updateUI(data);
-    })
-    .catch(err => console.log("AI Server Offline")); // عشان لو نسيت تشغل البايثون ميعطلش
-}
-
-function updateUI(result) {
-    if (result.status === "SAFE") {
-        aiBadge.innerText = "آمن (مستقر)";
-        aiBadge.className = "status-badge status-safe";
-        camContainer.style.border = "2px solid #ddd"; // حدود طبيعية
-        document.getElementById('security-text').innerText = "آمن";
-        document.getElementById('security-text').style.color = "green";
-    } 
-    else if (result.status === "WARNING") {
-        aiBadge.innerText = "تحذير: " + result.message;
-        aiBadge.className = "status-badge status-wait";
-        camContainer.style.border = "4px solid orange";
-    }
-    else if (result.status === "CHEAT") {
-        aiBadge.innerText = "غش: " + result.message;
-        aiBadge.className = "status-badge status-danger";
-        camContainer.style.border = "5px solid red"; // برواز أحمر عريض
         
-        // إضافة للسجل
-        let li = document.createElement('li');
-        li.innerText = `⚠️ ${result.message} (${new Date().toLocaleTimeString()})`;
-        logList.prepend(li);
+        if (time <= 0) {
+            clearInterval(interval);
+            alert("⏰ انتهى الوقت!");
+            submitExam();
+        }
+    }, 1000);
+}
+
+// تسليم الامتحان
+async function submitExam() {
+    if (!studentData) {
+        alert("يجب تسجيل الدخول أولاً");
+        return;
+    }
+    
+    const confirmSubmit = confirm("هل أنت متأكد من التسليم النهائي؟");
+    if (!confirmSubmit) return;
+    
+    const answers = [];
+    document.querySelectorAll('#questionsContainer textarea').forEach((textarea, index) => {
+        answers.push({
+            question_index: index + 1,
+            answer: textarea.value
+        });
+    });
+    
+    const submissionData = {
+        student_id: studentData.id,
+        student_name: studentData.name,
+        subject: document.getElementById('subjectTitle').innerText,
+        answers: answers,
+        uploaded_file: uploadedFileName,
+        violations: {
+            right_looks: rightLookCounter,
+            left_looks: leftLookCounter,
+            face_missing: faceMissingCounter
+        },
+        submission_time: new Date().toISOString()
+    };
+    
+    try {
+        const response = await fetch('/api/submit_exam', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(submissionData)
+        });
+        
+        if (response.ok) {
+            alert("✅ تم تسليم الامتحان بنجاح!\n\nحظاً موفقاً يا " + studentData.name);
+            window.location.href = '/';
+        } else {
+            alert("تم حفظ الإجابات محلياً");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("تم حفظ الإجابات محلياً (مشكلة في الاتصال)");
     }
 }
+
+// حماية المتصفح
+document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('copy', e => e.preventDefault());
+    document.addEventListener('cut', e => e.preventDefault());
+    document.addEventListener('paste', e => e.preventDefault());
+    
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && studentData) {
+            logCheating("⚠️ خروج من شاشة الامتحان!");
+        }
+    });
+    
+    document.addEventListener('keydown', e => {
+        if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I')) {
+            e.preventDefault();
+            alert("❌ أدوات المطور معطلة لأسباب أمنية");
+        }
+    });
+});

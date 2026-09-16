@@ -1,88 +1,143 @@
 # 🛡️ HNUSIS AI Proctoring System
-### Next-Gen Secure Examination Platform with Edge AI Monitoring
+## نظام الاختبارات الذكي للمراقبة بالذكاء الاصطناعي
 
-![Project Status](https://img.shields.io/badge/Status-Active-success)
+![Project Status](https://img.shields.io/badge/Status-Production_Ready-success)
 ![Tech Stack](https://img.shields.io/badge/AI-Google_MediaPipe-blue)
 ![Security](https://img.shields.io/badge/Security-Anti_Cheat-red)
-![Backend](https://img.shields.io/badge/Backend-Serverless-black)
-
-## 📖 Overview
-
-**HNUSIS Proctor** is a smart, browser-based examination platform designed to ensure the integrity of online exams. Unlike traditional systems that stream video to a server (high cost/latency), this system utilizes **Client-Side Edge AI** to analyze student behavior in real-time within the browser.
-
-This project was developed to solve the problem of **scalable secure testing**, allowing thousands of students to take exams simultaneously without overloading university servers.
-
-## ✨ Key Features
-
-### 🧠 Intelligent Monitoring (AI Core)
-*   **Real-time Gaze Tracking:** Uses `Google MediaPipe Face Mesh` to calculate the **Yaw & Pitch** of the student's head.
-*   **Instant Cheating Detection:** Detects if the student looks away (Left/Right) for more than a specific threshold (Geometry-based logic).
-*   **Privacy-First:** Video streams are processed locally on the client's device. No video is sent to the server, preserving student privacy.
-
-### 🔒 Security & Integrity
-*   **Camera Blackout Penalty:** If the student covers the camera or leaves the frame, the exam screen is instantly blocked.
-*   **Identity Verification:** Integration with a student database (SQL/JSON) to verify Student IDs before entry.
-*   **Tamper-Proof Timers:** Server-synced countdowns to prevent client-side manipulation.
-
-### 🎓 Faculty Dashboard
-*   **Dynamic Exam Generation:** Professors can create exams, set timers, and generate **Encrypted Exam Links**.
-*   **Serverless Deployment:** No database setup required for the exam content; questions are encoded directly into the URL for easy sharing.
-
-## 🛠️ Tech Stack
-
-| Component | Technology | Description |
-| :--- | :--- | :--- |
-| **Frontend** | HTML5, CSS3, JS (ES6+) | Responsive UI with Real-time Canvas rendering. |
-| **AI Engine** | Google MediaPipe | Lightweight Machine Learning models for Face Mesh. |
-| **Backend** | Node.js (Vercel Functions) | API for authentication and secure logging. |
-| **Database** | PostgreSQL (Supabase) | Storing student records (IDs, Names, Logs). |
-| **Hosting** | Vercel | Serverless edge deployment. |
-
-## 🚀 How It Works (The Engineering Part)
-
-1.  **Authentication:** The student enters their University ID. The system queries the SQL database via a secure API.
-2.  **Initialization:** The browser loads the ML models (TinyFaceDetector) into memory.
-3.  **The Loop:** 
-    *   The webcam captures a frame.
-    *   The AI maps **468 facial landmarks**.
-    *   The algorithm calculates the ratio between the nose tip and ear coordinates:
-        > `Ratio = (Nose_x - LeftEar_x) / (Nose_x - RightEar_x)`
-    *   If the ratio deviates from the safe range `[0.3 - 3.0]`, a cheating flag is raised.
-
-## 📸 Screenshots
-
-| Student Login | AI Monitoring | Admin Dashboard |
-| :---: | :---: | :---: |
-| ![Login Screen](https://via.placeholder.com/300x200?text=Secure+Login) | ![AI Monitor](https://via.placeholder.com/300x200?text=Gaze+Detection) | ![Admin Panel](https://via.placeholder.com/300x200?text=Exam+Creator) |
-
-## 📦 Installation & Setup
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/hnusis-proctor.git
-    ```
-2.  **Install Dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Setup Environment Variables (Vercel):**
-    *   Create a `.env` file and add your database connection:
-    ```env
-    POSTGRES_URL="your_supabase_connection_string"
-    ```
-4.  **Run Locally:**
-    ```bash
-    npm start
-    ```
-
-## 🛡️ Security Note
-This system is designed as a **deterrent**. While it detects visual anomalies, it should be used in conjunction with other security measures (IP logging, Browser Lockdown) for high-stakes exams.
-
-## 👨‍💻 Author
-
-**Eng. KING ABDO**
-*   *Smart Systems Engineer*
-*   *Cybersecurity Enthusiast*
 
 ---
-*Built for the Future of Education.*
+
+## 📖 نظرة عامة
+
+**HNUSIS Proctor** هو منصة اختبارات متطورة تعمل على المتصفح مباشرة، مصممة لضمان نزاهة الامتحانات الإلكترونية. يستخدم النظام **Edge AI** لتحليل سلوك الطالب في الوقت الفعلي دون الحاجة لبث الفيديو للسيرفر.
+
+### ✨ المميزات الرئيسية
+
+#### 🧠 المراقبة الذكية (AI Core)
+- **تتبع النظرات:** استخدام `Google MediaPipe Face Mesh` لحساب اتجاه رأس الطالب
+- **كشف الغش الفوري:** اكتشاف الالتفات يميناً أو يساراً
+- **الخصوصية أولاً:** معالجة الفيديو محلياً على جهاز الطالب
+
+#### 🔒 الأمان والنزاهة
+- **عقوبة حجب الشاشة:** عند إخفاء الوجه أو إغلاق الكاميرا
+- **التحقق من الهوية:** التكامل مع قاعدة بيانات الطلاب
+- **منع النسخ واللصق:** تعطيل الزر الأيمن وأدوات المطور
+- **كشف تغيير التبويب:** تسجيل أي خروج من شاشة الامتحان
+
+#### 🎓 لوحة تحكم الأساتذة
+- **إنشاء امتحانات ديناميكية:** أسئلة، مؤقت، وروابط مشفرة
+- **نظام رفع الملفات:** إرفاق إجابات PDF/صور
+
+---
+
+## 🛠️ التقنيات المستخدمة
+
+| المكون | التقنية | الوصف |
+| :--- | :--- | :--- |
+| **Frontend** | HTML5, CSS3, ES6+ | واجهة مستجيبة |
+| **AI Engine** | Google MediaPipe | كشف الوجوه 468 landmark |
+| **Backend** | Node.js | سيرفر خفيف وسريع |
+| **Database** | PostgreSQL | تخزين الطلاب والنتائج |
+
+---
+
+## 🚀 التشغيل السريع
+
+### 1. تثبيت المتطلبات
+```bash
+# تأكد من وجود Node.js
+node --version
+
+# تثبيت المكتبات
+npm install
+```
+
+### 2. تشغيل السيرفر
+```bash
+npm start
+```
+
+### 3. فتح التطبيق
+- **صفحة الطالب:** http://localhost:3000
+- **لوحة التحكم:** http://localhost:3000/admin.html
+
+### 4. أرقام تجريبية للدخول
+```
+921240008 - أحمد حموده قرني سلامة
+921240012 - أحمد سعيد عبدالله محمود
+921240001 - ابراهيم السيد عبدالحميد السيد
+```
+
+---
+
+## 📁 هيكل المشروع
+
+```
+/workspace
+├── index.html          # صفحة الامتحان الرئيسية
+├── admin.html          # لوحة إنشاء الامتحانات
+├── server.js           # السيرفر الرئيسي
+├── style.css           # التنسيقات
+├── package.json        # إعدادات المشروع
+├── database.sql        # سكربت قاعدة البيانات
+└── api/
+    └── index.js        # API endpoints
+```
+
+---
+
+## 🔐 كيفية العمل
+
+1. **المصادقة:** يدخل الطالب رقمه الجامعي → التحقق من قاعدة البيانات
+2. **التحميل:** تحميل نماذج ML في المتصفح
+3. **الحلقة:** 
+   - الكاميرا تلتقط إطار
+   - AI يرسم 468 نقطة على الوجه
+   - حساب نسبة التوجيه: `(Nose_x - LeftEar_x) / (Nose_x - RightEar_x)`
+   - إذا النسبة خارج المدى الآمن [0.3 - 3.0] → رفع علم غش
+
+---
+
+## 📊 قاعدة البيانات
+
+الجداول المطلوبة:
+
+```sql
+-- جدول الطلاب
+CREATE TABLE students (
+    id BIGINT PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+-- جدول المخالفات
+CREATE TABLE cheating_logs (
+    id SERIAL PRIMARY KEY,
+    student_id BIGINT,
+    violation_type TEXT,
+    timestamp TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- جدول التسليمات
+CREATE TABLE exam_submissions (
+    id SERIAL PRIMARY KEY,
+    student_id BIGINT,
+    student_name TEXT,
+    subject TEXT,
+    answers JSONB,
+    uploaded_file TEXT,
+    violations JSONB,
+    submission_time TIMESTAMPTZ
+);
+```
+
+---
+
+## 👨‍💻 المؤلف
+
+**Eng. KING ABDO**
+- مهندس أنظمة ذكية
+- متخصص في الأمن السيبراني
+
+---
+
+*مبني لمستقبل التعليم* 🎓
