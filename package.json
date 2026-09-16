@@ -1,7 +1,24 @@
 {
-  "name": "exam-system",
-  "version": "1.0.0",
-  "dependencies": {
-    "pg": "latest"
+  "name": "hnusis-proctoring-system",
+  "version": "2.0.0",
+  "description": "نظام الاختبارات الذكي للمراقبة بالذكاء الاصطناعي - HNUSIS AI Proctoring System",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": [
+    "proctoring",
+    "ai",
+    "exam",
+    "education",
+    "mediapipe",
+    "face-detection"
+  ],
+  "author": "KING ABDO",
+  "license": "MIT",
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
   }
 }
